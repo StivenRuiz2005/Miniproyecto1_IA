@@ -15,7 +15,7 @@ class NodoArbol:
         
         
 class Laberinto:
-    def __init__(self, root, rows=4, cols=4, expansiones_por_actualizacion=2):
+    def __init__(self, root, rows=8, cols=8, expansiones_por_actualizacion=2):
         self.root = root
         self.rows = rows
         self.cols = cols
@@ -29,9 +29,9 @@ class Laberinto:
         self.maze = [[0 for _ in range(cols)] for _ in range(rows)]  
         
         
-        self.raton_pos = (1, 0)  # aqui define la Posición del ratón
-        self.queso_pos = (1, 2)  # lo mismo con la Posición del queso
-        self.bloques_grises = [(1,1), (3,2), (3,3), (2,1)]  # aqui ubica las Paredes/bloques grises donde le de la gana
+        self.raton_pos = (0, 0)  # aqui define la Posición del ratón
+        self.queso_pos = (6, 6)  # lo mismo con la Posición del queso
+        self.bloques_grises = [(1,1), (4,3), (2,1), (3,4),(7,2), (6,5),(4,2),(1,3),(1,1)]  # aqui ubica las Paredes/bloques grises donde le de la gana
 
         
         self.raton_image = self.cargar_imagenes(r"Images/Raton.png")#no se le olvide combiar la ruta de las imagenes o paila no se ejecuta esta monda
@@ -106,10 +106,6 @@ class Laberinto:
             print("Por favor, ingrese un número entero.")
             return self.solicitar_limite_expansiones(tipo_busqueda)
 
-    ##TODO:  Busqueda por amplitud y profundidad hibrida, ejecutar cambios
-
-
-
 
     def realizar_busqueda_hibrida(self):
         pila_dfs = []
@@ -152,10 +148,15 @@ class Laberinto:
                 if resultado:
                     return
 
+                # Transfer remaining nodes from BFS queue to DFS stack
+                while cola_bfs:
+                    pila_dfs.append(cola_bfs.popleft())
+
             # Búsqueda en profundidad iterativa
             elif metodo_actual == "IDDFS":
                 profundidad_max_inicial = self.solicitar_limite_expansiones("IDDFS")
-                resultado = self.busqueda_iddfs(profundidad_max_inicial)
+                max_expansiones = profundidad_max_inicial
+                resultado = self.busqueda_iddfs(profundidad_max_inicial, max_expansiones)
                 if resultado:
                     return
 
@@ -168,6 +169,7 @@ class Laberinto:
             # Select the next method randomly from the remaining methods
             metodo_actual = random.choice(metodos_disponibles)
             metodos_disponibles.remove(metodo_actual)
+            
     def busqueda_dfs(self, pila_dfs, visitados, max_expansiones):
         expansiones = 0
         while pila_dfs:
@@ -241,15 +243,20 @@ class Laberinto:
         print("No quedan nodos en la cola de BFS.")
         return False, expansiones
 
-    def busqueda_iddfs(self, profundidad_max_inicial):
+    def busqueda_iddfs(self, profundidad_max_inicial, max_expansiones):
         profundidad_max = profundidad_max_inicial
-        while True:
+        expansiones_totales = 0
+
+        while profundidad_max <= max_expansiones:
             encontrado = self.busqueda_dfs_limitada(profundidad_max)
             if encontrado:
                 return True
             profundidad_max += 1
+            expansiones_totales += 1
             print(f"Aumentando la profundidad a {profundidad_max}.")
 
+        print("Se alcanzó el límite máximo de expansiones para IDDFS.")
+        return False
 
     def busqueda_dfs_limitada(self, profundidad_max):
         pila_dfs = [(NodoArbol(self.raton_pos), 0)]  # La pila contendrá el nodo y la profundidad
