@@ -114,7 +114,7 @@ class Laberinto:
         expansiones_totales = 0
         
         # List of available search methods
-        metodos_disponibles = ["DFS"]
+        metodos_disponibles = ["BFS"]
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
