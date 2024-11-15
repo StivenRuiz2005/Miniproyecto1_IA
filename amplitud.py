@@ -191,6 +191,7 @@ class Laberinto:
                     
                     nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
                     nodo_actual.hijos.append(nuevo_nodo)
+                    # Add the right child first, then the left child
                     pila_dfs.append(nuevo_nodo)
                     visitados.add(nueva_posicion)
                     expansiones += 1
@@ -205,19 +206,18 @@ class Laberinto:
                         return False, expansiones
 
 
-    def busqueda_dfs(self, pila_dfs, visitados, max_expansiones):
+    def busqueda_bfs(self, cola_bfs, visitados, max_expansiones):
         expansiones = 0
-        while pila_dfs:
-            print("Using DFS")
-            nodo_actual = pila_dfs.pop()
+        while cola_bfs:
+            print("Using BFS")
+            nodo_actual = cola_bfs.popleft()
             posicion_actual = nodo_actual.posicion
 
             if posicion_actual == self.queso_pos:
-                print("¡Queso encontrado con DFS!")
+                print("¡Queso encontrado con BFS!")
                 return True, expansiones
 
-            # Add children in reverse order to prioritize leftmost expansion
-            for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:  # Right, Down, Left, Up
+            for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
                 if (0 <= nueva_posicion[0] < self.rows and
                     0 <= nueva_posicion[1] < self.cols and
@@ -226,7 +226,7 @@ class Laberinto:
                     
                     nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
                     nodo_actual.hijos.append(nuevo_nodo)
-                    pila_dfs.append(nuevo_nodo)
+                    cola_bfs.append(nuevo_nodo)
                     visitados.add(nueva_posicion)
                     expansiones += 1
 
@@ -236,8 +236,12 @@ class Laberinto:
                     time.sleep(0.5)
 
                     if expansiones >= max_expansiones:
-                        print(f"Límite de expansiones alcanzado en DFS ({expansiones})")
+                        print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
                         return False, expansiones
+
+        # Asegurar retorno de False y el número de expansiones si no se encuentra el queso
+        print("No quedan nodos en la cola de BFS.")
+        return False, expansiones
     def busqueda_iddfs(self, profundidad_max_inicial, max_expansiones):
         profundidad_max = profundidad_max_inicial
         expansiones_totales = 0
@@ -374,6 +378,7 @@ class Laberinto:
 
         self.nodo_padre_coords[nodo_hijo] = (x_hijo, y_hijo)
         self.hijos_contador[nodo_padre] += 1
+        
     def mostrar_camino(self, nodo):
         while nodo:
             self.dibujar_nodo_lab(nodo.posicion)
