@@ -114,7 +114,7 @@ class Laberinto:
         expansiones_totales = 0
         
         # List of available search methods
-        metodos_disponibles = ["DFS", "BFS", "IDDFS"]
+        metodos_disponibles = ["DFS"]
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
@@ -181,7 +181,8 @@ class Laberinto:
                 print("¡Queso encontrado con DFS!")
                 return True, expansiones
 
-            for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            # Add children in reverse order to prioritize leftmost expansion
+            for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:  # Right, Down, Left, Up
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
                 if (0 <= nueva_posicion[0] < self.rows and
                     0 <= nueva_posicion[1] < self.cols and
@@ -203,21 +204,20 @@ class Laberinto:
                         print(f"Límite de expansiones alcanzado en DFS ({expansiones})")
                         return False, expansiones
 
-        print("No quedan nodos en la pila de DFS.")
-        return False, expansiones
 
-    def busqueda_bfs(self, cola_bfs, visitados, max_expansiones):
+    def busqueda_dfs(self, pila_dfs, visitados, max_expansiones):
         expansiones = 0
-        while cola_bfs:
-            print("Using BFS")
-            nodo_actual = cola_bfs.popleft()
+        while pila_dfs:
+            print("Using DFS")
+            nodo_actual = pila_dfs.pop()
             posicion_actual = nodo_actual.posicion
 
             if posicion_actual == self.queso_pos:
-                print("¡Queso encontrado con BFS!")
+                print("¡Queso encontrado con DFS!")
                 return True, expansiones
 
-            for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            # Add children in reverse order to prioritize leftmost expansion
+            for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:  # Right, Down, Left, Up
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
                 if (0 <= nueva_posicion[0] < self.rows and
                     0 <= nueva_posicion[1] < self.cols and
@@ -226,7 +226,7 @@ class Laberinto:
                     
                     nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
                     nodo_actual.hijos.append(nuevo_nodo)
-                    cola_bfs.append(nuevo_nodo)
+                    pila_dfs.append(nuevo_nodo)
                     visitados.add(nueva_posicion)
                     expansiones += 1
 
@@ -236,13 +236,8 @@ class Laberinto:
                     time.sleep(0.5)
 
                     if expansiones >= max_expansiones:
-                        print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
+                        print(f"Límite de expansiones alcanzado en DFS ({expansiones})")
                         return False, expansiones
-
-        # Asegurar retorno de False y el número de expansiones si no se encuentra el queso
-        print("No quedan nodos en la cola de BFS.")
-        return False, expansiones
-
     def busqueda_iddfs(self, profundidad_max_inicial, max_expansiones):
         profundidad_max = profundidad_max_inicial
         expansiones_totales = 0
@@ -345,52 +340,40 @@ class Laberinto:
         self.canvas.create_rectangle(x1, y1, x2, y2, fill="lightblue", outline="black")
 
     def dibujar_arbol(self, nodo_padre, nodo_hijo):
-        # Obtener el tamaño del canvas para centrar la raíz
         canvas_ancho = self.canvas_arbol.winfo_width()
 
-        # Inicializar el contador de hijos para el nodo padre si no existe
         if nodo_padre not in self.hijos_contador:
-            self.hijos_contador[nodo_padre] = 0  # Contador de hijos para el nodo padre
+            self.hijos_contador[nodo_padre] = 0
 
-        # Si el nodo hijo ya ha sido agregado, no hacer nada (evitar duplicados)
         if nodo_hijo in self.nodo_padre_coords:
             print(f"El nodo {nodo_hijo} ya existe. Evitando duplicado.")
             return
 
-        # Si es la raíz, centrarla en el canvas
         if nodo_padre not in self.nodo_padre_coords:
-            x_centro = canvas_ancho // 2  # Centrar la raíz
-            self.nodo_padre_coords[nodo_padre] = (x_centro, 20)  # Coordenadas iniciales centradas
-            self.canvas_arbol.create_oval(x_centro - 5, 15, x_centro + 5, 25, fill="blue")  # Dibujar la raíz
+            x_centro = canvas_ancho // 2
+            self.nodo_padre_coords[nodo_padre] = (x_centro, 20)
+            self.canvas_arbol.create_oval(x_centro - 5, 15, x_centro + 5, 25, fill="blue")
+            self.canvas_arbol.create_text(x_centro, 10, text=str(nodo_padre.posicion), fill="black")
 
-        # Obtener coordenadas del nodo padre
         x_padre, y_padre = self.nodo_padre_coords[nodo_padre]
-
-        # Verificar si el nodo padre es la raíz (no tiene padre)
         es_raiz = nodo_padre.padre is None
 
-        # Calcular la posición del nuevo hijo
+        # Adjust the position logic to add the right node first
         if es_raiz and self.hijos_contador[nodo_padre] < 2:
             x_hijo = x_padre + (self.hijos_contador[nodo_padre] * 160) - 80
         else:
             num_hijos = len(nodo_padre.hijos)
-            x_hijo = x_padre + (self.hijos_contador[nodo_padre] - num_hijos / 2) * 60
+            # Reverse the order of positioning to add the right node first
+            x_hijo = x_padre + ((num_hijos / 2) - self.hijos_contador[nodo_padre]) * 60
 
-        y_hijo = y_padre + 80  # Aumento en altura para el hijo
+        y_hijo = y_padre + 80
 
-        # Dibujar la línea entre el nodo padre y el hijo
         self.canvas_arbol.create_line(x_padre, y_padre, x_hijo, y_hijo, fill="black")
-
-        # Dibujar el nodo hijo
         self.canvas_arbol.create_oval(x_hijo - 5, y_hijo - 5, x_hijo + 5, y_hijo + 5, fill="blue")
+        self.canvas_arbol.create_text(x_hijo, y_hijo - 10, text=str(nodo_hijo.posicion), fill="black")
 
-        # Almacenar las coordenadas del nuevo nodo hijo
         self.nodo_padre_coords[nodo_hijo] = (x_hijo, y_hijo)
-
-        # Incrementar el contador de hijos para el nodo padre
         self.hijos_contador[nodo_padre] += 1
-
-
     def mostrar_camino(self, nodo):
         while nodo:
             self.dibujar_nodo_lab(nodo.posicion)
