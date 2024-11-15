@@ -108,76 +108,66 @@ class Laberinto:
 
     ##TODO:  Busqueda por amplitud y profundidad hibrida, ejecutar cambios
 
+
+
+
     def realizar_busqueda_hibrida(self):
-        pila_dfs = [NodoArbol(self.raton_pos)]
+        pila_dfs = []
         cola_bfs = deque()
         visitados = set([self.raton_pos])
         expansiones_totales = 0
         
-        # Banderas para alternar entre las estrategias de búsqueda
-        usando_dfs = True
-        usando_bfs = False
-        usando_iterativa = False
-        usando_costo_uniforme = False
-        
-        # Variables para indicar si cada búsqueda ya fue aplicada
-        dfs_aplicada = False
-        bfs_aplicada = False
-        iterativa_aplicada = False
-        costo_uniforme_aplicada = False
+        # List of available search methods
+        metodos_disponibles = ["DFS", "BFS", "IDDFS"]
+        metodo_actual = random.choice(metodos_disponibles)
+        metodos_disponibles.remove(metodo_actual)
+
+        # Initialize the starting node
+        nodo_inicial = NodoArbol(self.raton_pos)
+
+        # Add the initial node to the appropriate data structure
+        if metodo_actual == "DFS":
+            pila_dfs.append(nodo_inicial)
+        elif metodo_actual == "BFS":
+            cola_bfs.append(nodo_inicial)
 
         while True:
             # Búsqueda en profundidad
-            if usando_dfs and not dfs_aplicada:
+            if metodo_actual == "DFS":
                 max_expansiones = self.solicitar_limite_expansiones("DFS")
                 resultado, expansiones = self.busqueda_dfs(pila_dfs, visitados, max_expansiones)
                 expansiones_totales += expansiones
                 if resultado:
                     return
-                dfs_aplicada = True
-                usando_dfs = False
-                usando_bfs = True
 
                 # Transfer nodes from DFS stack to BFS queue
                 while pila_dfs:
                     cola_bfs.append(pila_dfs.pop())
 
             # Búsqueda en amplitud
-            elif usando_bfs and not bfs_aplicada:
+            elif metodo_actual == "BFS":
                 max_expansiones = self.solicitar_limite_expansiones("BFS")
                 resultado, expansiones = self.busqueda_bfs(cola_bfs, visitados, max_expansiones)
                 expansiones_totales += expansiones
                 if resultado:
                     return
-                bfs_aplicada = True
-                usando_bfs = False
-                usando_iterativa = True
 
             # Búsqueda en profundidad iterativa
-            elif usando_iterativa and not iterativa_aplicada:
+            elif metodo_actual == "IDDFS":
                 profundidad_max_inicial = self.solicitar_limite_expansiones("IDDFS")
                 resultado = self.busqueda_iddfs(profundidad_max_inicial)
                 if resultado:
                     return
-                iterativa_aplicada = True
-                usando_iterativa = False
-                usando_costo_uniforme = True
 
-            # Búsqueda por costo uniforme
-            elif usando_costo_uniforme and not costo_uniforme_aplicada:
-                print("Iniciando búsqueda por costo uniforme...")
-                resultado, expansiones = self.busqueda_costo_uniforme()
-                expansiones_totales += expansiones
-                if resultado:
-                    return
-                costo_uniforme_aplicada = True
-                usando_costo_uniforme = False
-
-            # Si todas las búsquedas fallan, terminamos
-            else:
+            # Check if there are any methods left to apply
+            if not metodos_disponibles:
                 print(f"Expansiones totales: {expansiones_totales}")
                 print("No se encontró el queso después de probar todas las búsquedas.")
                 break
+
+            # Select the next method randomly from the remaining methods
+            metodo_actual = random.choice(metodos_disponibles)
+            metodos_disponibles.remove(metodo_actual)
     def busqueda_dfs(self, pila_dfs, visitados, max_expansiones):
         expansiones = 0
         while pila_dfs:
