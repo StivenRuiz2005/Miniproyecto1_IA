@@ -31,7 +31,7 @@ class Laberinto:
         
         self.raton_pos = (1, 0)  # aqui define la Posición del ratón
         self.queso_pos = (1, 2)  # lo mismo con la Posición del queso
-        self.bloques_grises = [(1,1), (3,2)]  # aqui ubica las Paredes/bloques grises donde le de la gana
+        self.bloques_grises = [(1,1), (3,2), (3,3), (2,1)]  # aqui ubica las Paredes/bloques grises donde le de la gana
 
         
         self.raton_image = self.cargar_imagenes(r"Images/Raton.png")#no se le olvide combiar la ruta de las imagenes o paila no se ejecuta esta monda
@@ -138,6 +138,10 @@ class Laberinto:
                 usando_dfs = False
                 usando_bfs = True
 
+                # Transfer nodes from DFS stack to BFS queue
+                while pila_dfs:
+                    cola_bfs.append(pila_dfs.pop())
+
             # Búsqueda en amplitud
             elif usando_bfs and not bfs_aplicada:
                 max_expansiones = self.solicitar_limite_expansiones("BFS")
@@ -174,7 +178,6 @@ class Laberinto:
                 print(f"Expansiones totales: {expansiones_totales}")
                 print("No se encontró el queso después de probar todas las búsquedas.")
                 break
-
     def busqueda_dfs(self, pila_dfs, visitados, max_expansiones):
         expansiones = 0
         while pila_dfs:
@@ -395,7 +398,7 @@ class Laberinto:
         while nodo:
             self.dibujar_nodo_lab(nodo.posicion)
             nodo = nodo.padre
-        self.root.update()
+        self.root.update() 
 
 
 if __name__ == "__main__":
