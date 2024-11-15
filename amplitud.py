@@ -12,8 +12,25 @@ class NodoArbol:
         self.hijos = []
         self.costos = costo
         self.altura = altura
+        self.left_value = 0  # Initialize default value
         
-        
+        # Calculate cumulative left_value from the root to this node
+        if padre is not None:
+            parent_x = padre.posicion[1]
+            current_x = posicion[1]
+            # If this node is to the right of its parent
+            if current_x > parent_x:
+                self.left_value = padre.left_value + 1
+            # If this node is to the left of its parent
+            elif current_x < parent_x:
+                self.left_value = padre.left_value - 1
+            # If same x position
+            else:
+                self.left_value = padre.left_value
+            # Accumulate the left_value from the parent
+            self.left_value += padre.left_value
+
+    
 class Laberinto:
     def __init__(self, root, rows=8, cols=8, expansiones_por_actualizacion=2):
         self.root = root
@@ -114,7 +131,7 @@ class Laberinto:
         expansiones_totales = 0
         
         # List of available search methods
-        metodos_disponibles = ["BFS"]
+        metodos_disponibles = ["BFS", "DFS"]
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
@@ -125,7 +142,9 @@ class Laberinto:
         if metodo_actual == "DFS":
             pila_dfs.append(nodo_inicial)
         elif metodo_actual == "BFS":
-            cola_bfs.append(nodo_inicial)
+            cola_bfs.append((nodo_inicial, 0))  # Add a tuple with the node and its order
+
+        order_counter = 1  # Initialize order counter
 
         while True:
             # Búsqueda en profundidad
@@ -136,9 +155,10 @@ class Laberinto:
                 if resultado:
                     return
 
-                # Transfer nodes from DFS stack to BFS queue
+                # Transfer nodes from DFS to BFS
                 while pila_dfs:
-                    cola_bfs.append(pila_dfs.pop())
+                    cola_bfs.append((pila_dfs.pop(), order_counter))
+                    order_counter += 1
 
             # Búsqueda en amplitud
             elif metodo_actual == "BFS":
@@ -148,17 +168,10 @@ class Laberinto:
                 if resultado:
                     return
 
-                # Transfer remaining nodes from BFS queue to DFS stack
-                while cola_bfs:
-                    pila_dfs.append(cola_bfs.popleft())
-
-            # Búsqueda en profundidad iterativa
-            elif metodo_actual == "IDDFS":
-                profundidad_max_inicial = self.solicitar_limite_expansiones("IDDFS")
-                max_expansiones = profundidad_max_inicial
-                resultado = self.busqueda_iddfs(profundidad_max_inicial, max_expansiones)
-                if resultado:
-                    return
+                # Sort remaining nodes by cumulative left_value and order before transferring to DFS
+                sorted_nodes = sorted(cola_bfs, key=lambda item: (self.calculate_cumulative_left_value(item[0]), item[1]))
+                pila_dfs.extend(node for node, _ in sorted_nodes)
+                cola_bfs.clear()
 
             # Check if there are any methods left to apply
             if not metodos_disponibles:
@@ -169,20 +182,46 @@ class Laberinto:
             # Select the next method randomly from the remaining methods
             metodo_actual = random.choice(metodos_disponibles)
             metodos_disponibles.remove(metodo_actual)
-            
+
+    def calculate_cumulative_left_value(self, nodo):
+        cumulative_value = 0
+        current = nodo
+        while current:
+            cumulative_value += current.left_value
+            current = current.padre
+        return cumulative_value
+    def calculate_cumulative_left_value(self, nodo):
+        cumulative_value = 0
+        current = nodo
+        while current:
+            cumulative_value += current.left_value
+            current = current.padre
+        return cumulative_value
+    
     def busqueda_dfs(self, pila_dfs, visitados, max_expansiones):
         expansiones = 0
         while pila_dfs:
-            print("Using DFS")
-            nodo_actual = pila_dfs.pop()
+            # Find the node with the lowest cumulative left_value sum
+            min_cumulative_value = float('inf')
+            min_index = 0
+            for i, nodo in enumerate(pila_dfs):
+                # Calculate cumulative left_value sum
+                cumulative_value = self.calculate_cumulative_left_value(nodo)
+
+                if cumulative_value < min_cumulative_value:
+                    min_cumulative_value = cumulative_value
+                    min_index = i
+            
+            # Remove and process the node with the lowest cumulative left_value sum
+            nodo_actual = pila_dfs.pop(min_index)
             posicion_actual = nodo_actual.posicion
 
             if posicion_actual == self.queso_pos:
                 print("¡Queso encontrado con DFS!")
                 return True, expansiones
 
-            # Add children in reverse order to prioritize leftmost expansion
-            for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:  # Right, Down, Left, Up
+            # Process movements
+            for movimiento in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
                 if (0 <= nueva_posicion[0] < self.rows and
                     0 <= nueva_posicion[1] < self.cols and
@@ -191,7 +230,6 @@ class Laberinto:
                     
                     nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
                     nodo_actual.hijos.append(nuevo_nodo)
-                    # Add the right child first, then the left child
                     pila_dfs.append(nuevo_nodo)
                     visitados.add(nueva_posicion)
                     expansiones += 1
@@ -205,19 +243,20 @@ class Laberinto:
                         print(f"Límite de expansiones alcanzado en DFS ({expansiones})")
                         return False, expansiones
 
-
+        return False, expansiones
     def busqueda_bfs(self, cola_bfs, visitados, max_expansiones):
         expansiones = 0
         while cola_bfs:
-            print("Using BFS")
-            nodo_actual = cola_bfs.popleft()
+            # Unpack the node and its order from the queue
+            nodo_actual, _ = cola_bfs.popleft()
             posicion_actual = nodo_actual.posicion
 
             if posicion_actual == self.queso_pos:
                 print("¡Queso encontrado con BFS!")
                 return True, expansiones
 
-            for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            # Process movements in the order: Left, Up, Right, Down
+            for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
                 if (0 <= nueva_posicion[0] < self.rows and
                     0 <= nueva_posicion[1] < self.cols and
@@ -225,8 +264,19 @@ class Laberinto:
                     nueva_posicion not in visitados):
                     
                     nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
+                    
+                    # Calculate left_value based on the parent's position
+                    parent_x = nodo_actual.posicion[1]
+                    current_x = nueva_posicion[1]
+                    if current_x > parent_x:
+                        nuevo_nodo.left_value = nodo_actual.left_value + 1
+                    elif current_x < parent_x:
+                        nuevo_nodo.left_value = nodo_actual.left_value - 1
+                    else:
+                        nuevo_nodo.left_value = nodo_actual.left_value
+
                     nodo_actual.hijos.append(nuevo_nodo)
-                    cola_bfs.append(nuevo_nodo)
+                    cola_bfs.append((nuevo_nodo, _))  # Keep track of the order
                     visitados.add(nueva_posicion)
                     expansiones += 1
 
@@ -239,7 +289,6 @@ class Laberinto:
                         print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
                         return False, expansiones
 
-        # Asegurar retorno de False y el número de expansiones si no se encuentra el queso
         print("No quedan nodos en la cola de BFS.")
         return False, expansiones
     def busqueda_iddfs(self, profundidad_max_inicial, max_expansiones):
@@ -344,39 +393,53 @@ class Laberinto:
         self.canvas.create_rectangle(x1, y1, x2, y2, fill="lightblue", outline="black")
 
     def dibujar_arbol(self, nodo_padre, nodo_hijo):
+        # Obtener el tamaño del canvas para centrar la raíz
         canvas_ancho = self.canvas_arbol.winfo_width()
 
+        # Inicializar el contador de hijos para el nodo padre si no existe
         if nodo_padre not in self.hijos_contador:
-            self.hijos_contador[nodo_padre] = 0
+            self.hijos_contador[nodo_padre] = 0  # Contador de hijos para el nodo padre
 
+        # Si el nodo hijo ya ha sido agregado, no hacer nada (evitar duplicados)
         if nodo_hijo in self.nodo_padre_coords:
             print(f"El nodo {nodo_hijo} ya existe. Evitando duplicado.")
             return
 
+        # Si es la raíz, centrarla en el canvas
         if nodo_padre not in self.nodo_padre_coords:
-            x_centro = canvas_ancho // 2
-            self.nodo_padre_coords[nodo_padre] = (x_centro, 20)
-            self.canvas_arbol.create_oval(x_centro - 5, 15, x_centro + 5, 25, fill="blue")
-            self.canvas_arbol.create_text(x_centro, 10, text=str(nodo_padre.posicion), fill="black")
+            x_centro = canvas_ancho // 2  # Centrar la raíz
+            self.nodo_padre_coords[nodo_padre] = (x_centro, 20)  # Coordenadas iniciales centradas
+            self.canvas_arbol.create_oval(x_centro - 5, 15, x_centro + 5, 25, fill="blue")  # Dibujar la raíz
 
+        # Obtener coordenadas del nodo padre
         x_padre, y_padre = self.nodo_padre_coords[nodo_padre]
+
+        # Verificar si el nodo padre es la raíz (no tiene padre)
         es_raiz = nodo_padre.padre is None
 
-        # Adjust the position logic to add the right node first
+        # Calcular la posición del nuevo hijo
         if es_raiz and self.hijos_contador[nodo_padre] < 2:
             x_hijo = x_padre + (self.hijos_contador[nodo_padre] * 160) - 80
         else:
             num_hijos = len(nodo_padre.hijos)
-            # Reverse the order of positioning to add the right node first
-            x_hijo = x_padre + ((num_hijos / 2) - self.hijos_contador[nodo_padre]) * 60
+            x_hijo = x_padre + (self.hijos_contador[nodo_padre] - num_hijos / 2) * 60
 
-        y_hijo = y_padre + 80
+        y_hijo = y_padre + 80  # Aumento en altura para el hijo
 
+        # Dibujar la línea entre el nodo padre y el hijo
         self.canvas_arbol.create_line(x_padre, y_padre, x_hijo, y_hijo, fill="black")
-        self.canvas_arbol.create_oval(x_hijo - 5, y_hijo - 5, x_hijo + 5, y_hijo + 5, fill="blue")
-        self.canvas_arbol.create_text(x_hijo, y_hijo - 10, text=str(nodo_hijo.posicion), fill="black")
 
+        # Dibujar el nodo hijo
+        self.canvas_arbol.create_oval(x_hijo - 5, y_hijo - 5, x_hijo + 5, y_hijo + 5, fill="blue")
+
+        # Mostrar las coordenadas de la cuadrícula del nodo hijo encima de él
+        grid_x, grid_y = nodo_hijo.posicion  # Obtener las coordenadas de la cuadrícula
+        self.canvas_arbol.create_text(x_hijo, y_hijo - 20, text=f"({grid_x}, {grid_y})", fill="black")
+
+        # Almacenar las coordenadas del nuevo nodo hijo
         self.nodo_padre_coords[nodo_hijo] = (x_hijo, y_hijo)
+
+        # Incrementar el contador de hijos para el nodo padre
         self.hijos_contador[nodo_padre] += 1
         
     def mostrar_camino(self, nodo):
