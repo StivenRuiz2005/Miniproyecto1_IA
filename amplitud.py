@@ -12,32 +12,32 @@ class NodoArbol:
         self.hijos = []
         self.costos = costo
         self.altura = altura
-        self.left_value = 0  # Initialize default value
+        self.left_value = 0
         
-        # Calculate cumulative left_value from the root to this node
         if padre is not None:
             parent_x = padre.posicion[1]
             current_x = posicion[1]
-            # If this node is to the right of its parent
             if current_x > parent_x:
                 self.left_value = padre.left_value + 1
-            # If this node is to the left of its parent
             elif current_x < parent_x:
                 self.left_value = padre.left_value - 1
-            # If same x position
             else:
                 self.left_value = padre.left_value
-            # Accumulate the left_value from the parent
             self.left_value += padre.left_value
 
+    def agregar_hijo(self, hijo):
+            """Agrega un hijo manteniendo el orden por posición"""
+            self.hijos.append(hijo)
+            # Ordenar hijos por posición (izquierda a derecha, arriba a abajo)
+            self.hijos.sort(key=lambda n: (n.posicion[1], n.posicion[0]))
     
 class Laberinto:
     def __init__(self, root, rows=8, cols=8, expansiones_por_actualizacion=2):
         self.root = root
         self.rows = rows
         self.cols = cols
-        self.cell_width = 100  # aqui acomoda el Ancho de cada celda
-        self.cell_height = 80  # lo mismo Alto de cada celda
+        self.cell_width = 50  # aqui acomoda el Ancho de cada celda
+        self.cell_height = 50  # lo mismo Alto de cada celda
         self.image_scale_factor = 0.93  # esta mkd es para que la imagen no tape los bordes de las celdas, se escala un poco menos al 93
         self.expansiones_por_actualizacion = expansiones_por_actualizacion
         self.nodo_padre_coords = {}
@@ -112,8 +112,8 @@ class Laberinto:
         self.nodo_padre_coords = {}  
 
     def iniciar_busqueda(self):
-        self.boton_iniciar.config(state=tk.DISABLED)  # Desactivar el botón para evitar múltiples búsquedas
-        self.realizar_busqueda_hibrida()  # Comenzar la búsqueda por amplitud la unica que tengo daa
+        self.boton_iniciar.config(state=tk.DISABLED)  
+        self.realizar_busqueda_hibrida()  
 
     def solicitar_limite_expansiones(self, tipo_busqueda):
         try:
@@ -130,24 +130,20 @@ class Laberinto:
         visitados = set([self.raton_pos])
         expansiones_totales = 0
         
-        # List of available search methods
-        metodos_disponibles = ["BFS", "DFS"]
+        metodos_disponibles = ["DFS", "BFS"]
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
-        # Initialize the starting node
         nodo_inicial = NodoArbol(self.raton_pos)
 
-        # Add the initial node to the appropriate data structure
         if metodo_actual == "DFS":
             pila_dfs.append(nodo_inicial)
         elif metodo_actual == "BFS":
-            cola_bfs.append((nodo_inicial, 0))  # Add a tuple with the node and its order
+            cola_bfs.append((nodo_inicial, 0))
 
-        order_counter = 1  # Initialize order counter
+        order_counter = 1
 
         while True:
-            # Búsqueda en profundidad
             if metodo_actual == "DFS":
                 max_expansiones = self.solicitar_limite_expansiones("DFS")
                 resultado, expansiones = self.busqueda_dfs(pila_dfs, visitados, max_expansiones)
@@ -155,12 +151,11 @@ class Laberinto:
                 if resultado:
                     return
 
-                # Transfer nodes from DFS to BFS
+                # Transfer nodes from DFS to BFS with order preservation
                 while pila_dfs:
                     cola_bfs.append((pila_dfs.pop(), order_counter))
                     order_counter += 1
 
-            # Búsqueda en amplitud
             elif metodo_actual == "BFS":
                 max_expansiones = self.solicitar_limite_expansiones("BFS")
                 resultado, expansiones = self.busqueda_bfs(cola_bfs, visitados, max_expansiones)
@@ -168,18 +163,22 @@ class Laberinto:
                 if resultado:
                     return
 
-                # Sort remaining nodes by cumulative left_value and order before transferring to DFS
-                sorted_nodes = sorted(cola_bfs, key=lambda item: (self.calculate_cumulative_left_value(item[0]), item[1]))
-                pila_dfs.extend(node for node, _ in sorted_nodes)
-                cola_bfs.clear()
+                # Sort nodes by position before transferring to DFS
+                remaining_nodes = []
+                while cola_bfs:
+                    node, _ = cola_bfs.popleft()
+                    remaining_nodes.append(node)
+                
+                # Sort nodes by row (y) and column (x) position
+                sorted_nodes = sorted(remaining_nodes, 
+                                    key=lambda node: (node.posicion[0], node.posicion[1]))
+                pila_dfs.extend(sorted_nodes)
 
-            # Check if there are any methods left to apply
             if not metodos_disponibles:
                 print(f"Expansiones totales: {expansiones_totales}")
                 print("No se encontró el queso después de probar todas las búsquedas.")
                 break
 
-            # Select the next method randomly from the remaining methods
             metodo_actual = random.choice(metodos_disponibles)
             metodos_disponibles.remove(metodo_actual)
 
@@ -190,6 +189,7 @@ class Laberinto:
             cumulative_value += current.left_value
             current = current.padre
         return cumulative_value
+    
     def calculate_cumulative_left_value(self, nodo):
         cumulative_value = 0
         current = nodo
@@ -201,53 +201,47 @@ class Laberinto:
     def busqueda_dfs(self, pila_dfs, visitados, max_expansiones):
         expansiones = 0
         while pila_dfs:
-            # Find the node with the lowest cumulative left_value sum
-            min_cumulative_value = float('inf')
-            min_index = 0
-            for i, nodo in enumerate(pila_dfs):
-                # Calculate cumulative left_value sum
-                cumulative_value = self.calculate_cumulative_left_value(nodo)
-
-                if cumulative_value < min_cumulative_value:
-                    min_cumulative_value = cumulative_value
-                    min_index = i
-            
-            # Remove and process the node with the lowest cumulative left_value sum
-            nodo_actual = pila_dfs.pop(min_index)
+            nodo_actual = pila_dfs.pop()
             posicion_actual = nodo_actual.posicion
 
             if posicion_actual == self.queso_pos:
                 print("¡Queso encontrado con DFS!")
                 return True, expansiones
 
-            # Process movements
-            for movimiento in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
+            # Recolectar todos los movimientos válidos primero
+            movimientos_validos = []
+            for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:  # Izquierda, Arriba, Derecha, Abajo
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
                 if (0 <= nueva_posicion[0] < self.rows and
                     0 <= nueva_posicion[1] < self.cols and
                     self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0 and
                     nueva_posicion not in visitados):
-                    
-                    nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
-                    nodo_actual.hijos.append(nuevo_nodo)
-                    pila_dfs.append(nuevo_nodo)
-                    visitados.add(nueva_posicion)
-                    expansiones += 1
+                    movimientos_validos.append(nueva_posicion)
 
-                    self.dibujar_nodo_lab(nueva_posicion)
-                    self.dibujar_arbol(nodo_actual, nuevo_nodo)
-                    self.root.update()
-                    time.sleep(0.5)
+            # Ordenar los movimientos válidos (izquierda a derecha, arriba a abajo)
+            movimientos_validos.sort(key=lambda pos: (pos[1], pos[0]))
 
-                    if expansiones >= max_expansiones:
-                        print(f"Límite de expansiones alcanzado en DFS ({expansiones})")
-                        return False, expansiones
+            # Procesar los movimientos en orden
+            for nueva_posicion in movimientos_validos:
+                nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
+                nodo_actual.agregar_hijo(nuevo_nodo)  # Usar el nuevo método
+                pila_dfs.append(nuevo_nodo)
+                visitados.add(nueva_posicion)
+                expansiones += 1
+
+                self.dibujar_nodo_lab(nueva_posicion)
+                self.dibujar_arbol(nodo_actual, nuevo_nodo)
+                self.root.update()
+                time.sleep(0.5)
+
+                if expansiones >= max_expansiones:
+                    print(f"Límite de expansiones alcanzado en DFS ({expansiones})")
+                    return False, expansiones
 
         return False, expansiones
     def busqueda_bfs(self, cola_bfs, visitados, max_expansiones):
         expansiones = 0
         while cola_bfs:
-            # Unpack the node and its order from the queue
             nodo_actual, _ = cola_bfs.popleft()
             posicion_actual = nodo_actual.posicion
 
@@ -255,41 +249,36 @@ class Laberinto:
                 print("¡Queso encontrado con BFS!")
                 return True, expansiones
 
-            # Process movements in the order: Left, Up, Right, Down
+            # Recolectar movimientos válidos
+            movimientos_validos = []
             for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
                 if (0 <= nueva_posicion[0] < self.rows and
                     0 <= nueva_posicion[1] < self.cols and
                     self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0 and
                     nueva_posicion not in visitados):
-                    
-                    nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
-                    
-                    # Calculate left_value based on the parent's position
-                    parent_x = nodo_actual.posicion[1]
-                    current_x = nueva_posicion[1]
-                    if current_x > parent_x:
-                        nuevo_nodo.left_value = nodo_actual.left_value + 1
-                    elif current_x < parent_x:
-                        nuevo_nodo.left_value = nodo_actual.left_value - 1
-                    else:
-                        nuevo_nodo.left_value = nodo_actual.left_value
+                    movimientos_validos.append(nueva_posicion)
 
-                    nodo_actual.hijos.append(nuevo_nodo)
-                    cola_bfs.append((nuevo_nodo, _))  # Keep track of the order
-                    visitados.add(nueva_posicion)
-                    expansiones += 1
+            # Ordenar movimientos válidos
+            movimientos_validos.sort(key=lambda pos: (pos[1], pos[0]))
 
-                    self.dibujar_nodo_lab(nueva_posicion)
-                    self.dibujar_arbol(nodo_actual, nuevo_nodo)
-                    self.root.update()
-                    time.sleep(0.5)
+            # Procesar movimientos en orden
+            for nueva_posicion in movimientos_validos:
+                nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
+                nodo_actual.agregar_hijo(nuevo_nodo)  # Usar el nuevo método
+                cola_bfs.append((nuevo_nodo, _))
+                visitados.add(nueva_posicion)
+                expansiones += 1
 
-                    if expansiones >= max_expansiones:
-                        print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
-                        return False, expansiones
+                self.dibujar_nodo_lab(nueva_posicion)
+                self.dibujar_arbol(nodo_actual, nuevo_nodo)
+                self.root.update()
+                time.sleep(0.5)
 
-        print("No quedan nodos en la cola de BFS.")
+                if expansiones >= max_expansiones:
+                    print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
+                    return False, expansiones
+
         return False, expansiones
     def busqueda_iddfs(self, profundidad_max_inicial, max_expansiones):
         profundidad_max = profundidad_max_inicial
@@ -385,7 +374,7 @@ class Laberinto:
 
    
     def dibujar_nodo_lab(self, posicion):
-        time.sleep(0.4)
+        time.sleep(1)
         x1 = posicion[1] * self.cell_width
         y1 = posicion[0] * self.cell_height
         x2 = x1 + self.cell_width
