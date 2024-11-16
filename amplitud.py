@@ -29,7 +29,7 @@ class Laberinto:
         self.maze = [[0 for _ in range(cols)] for _ in range(rows)]  
         
         
-        self.raton_pos = (0, 0)  # aqui define la Posición del ratón
+        self.raton_pos = (1, 5)  # aqui define la Posición del ratón
         self.queso_pos = (6, 6)  # lo mismo con la Posición del queso
         self.bloques_grises = [(1,1), (4,3), (2,1), (3,4),(7,2), (6,5),(4,2),(1,3),(1,1)]  # aqui ubica las Paredes/bloques grises donde le de la gana
 
@@ -114,7 +114,7 @@ class Laberinto:
         expansiones_totales = 0
         
         # List of available search methods
-        metodos_disponibles = ["BFS"]
+        metodos_disponibles = ["BFS", "DFS"]  #uqsar el metodo que deseo para realizar la prueba 
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
@@ -159,7 +159,16 @@ class Laberinto:
                 resultado = self.busqueda_iddfs(profundidad_max_inicial, max_expansiones)
                 if resultado:
                     return
-
+                
+            # Búsqueda en profundidad limitada
+            elif metodo_actual == "DFSLI":
+                profundidad_max = self.solicitar_limite_expansiones("DFSLI")
+                
+                resultado = self.busqueda_dfs_limitada(profundidad_max)
+                if resultado:
+                    return
+            
+                
             # Check if there are any methods left to apply
             if not metodos_disponibles:
                 print(f"Expansiones totales: {expansiones_totales}")
@@ -242,6 +251,7 @@ class Laberinto:
         # Asegurar retorno de False y el número de expansiones si no se encuentra el queso
         print("No quedan nodos en la cola de BFS.")
         return False, expansiones
+    
     def busqueda_iddfs(self, profundidad_max_inicial, max_expansiones):
         profundidad_max = profundidad_max_inicial
         expansiones_totales = 0
@@ -258,8 +268,19 @@ class Laberinto:
         return False
 
     def busqueda_dfs_limitada(self, profundidad_max):
+
+        # Solicitar el límite de profundidad
+        try:
+            limite_profu = int(input("Ingrese el límite de profundidad deseado: "))
+        except ValueError:
+            print("Por favor, ingrese un número entero.")
+            return self.busqueda_dfs_limitada()
+
+
         pila_dfs = [(NodoArbol(self.raton_pos), 0)]  # La pila contendrá el nodo y la profundidad
         visitados = set([self.raton_pos])
+        expansiones_realizadas = 0  # Contador de expansiones
+
 
         while pila_dfs:
             nodo_actual, profundidad = pila_dfs.pop()
@@ -272,20 +293,24 @@ class Laberinto:
                 return True
 
             # Solo seguir expandiendo si no hemos alcanzado la profundidad máxima
-            if profundidad < profundidad_max:
+            if profundidad < limite_profu and expansiones_realizadas < profundidad_max:
                 for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
                     nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
 
-                    # Verificar si la nueva posición es válida y no ha sido visitada
+                    # Verificar si la nueva posición es válida
                     if (0 <= nueva_posicion[0] < self.rows and
                         0 <= nueva_posicion[1] < self.cols and
-                        self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0 and
-                        nueva_posicion not in visitados):
+                        self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0
+                        and nueva_posicion not in visitados):
 
+                        # Crear un nuevo nodo y añadirlo a la pila
                         nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
                         nodo_actual.hijos.append(nuevo_nodo)
                         pila_dfs.append((nuevo_nodo, profundidad + 1))  # Añadir a la pila con la nueva profundidad
                         visitados.add(nueva_posicion)
+
+                        # Contar la expansión realizada
+                        expansiones_realizadas += 1
 
                         # Dibujar el nodo en el laberinto y el árbol
                         self.dibujar_nodo_lab(nueva_posicion)
@@ -293,7 +318,19 @@ class Laberinto:
                         self.root.update()
                         time.sleep(0.5)
 
+                        # Verificar si se alcanzó el límite de expansiones
+                    if expansiones_realizadas >= profundidad_max:
+                        print(f"Límite de expansiones alcanzado: {profundidad_max}")
+                        return False
+
+            # Detener si se alcanza el límite de profundidad
+        if profundidad >= profundidad_max:
+            print(f"Límite de profundidad alcanzado: {profundidad_max}")
+            return False
+
+
         # Si la búsqueda DFS limitada no encuentra el queso, retornar False
+        print(f"No se encontró el queso con DFS limitada a profundidad {profundidad_max}.")
         return False
         
         
@@ -364,11 +401,11 @@ class Laberinto:
 
         # Adjust the position logic to add the right node first
         if es_raiz and self.hijos_contador[nodo_padre] < 2:
-            x_hijo = x_padre + (self.hijos_contador[nodo_padre] * 160) - 80
+            x_hijo = x_padre - (self.hijos_contador[nodo_padre] * 160) + 80
         else:
             num_hijos = len(nodo_padre.hijos)
-            # Reverse the order of positioning to add the right node first
-            x_hijo = x_padre + ((num_hijos / 2) - self.hijos_contador[nodo_padre]) * 60
+            # Invierta el orden de posicionamiento para agregar primero el nodo derecho
+            x_hijo = x_padre - ((num_hijos / 2) - self.hijos_contador[nodo_padre]) * 60
 
         y_hijo = y_padre + 80
 
