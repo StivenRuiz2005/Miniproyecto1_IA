@@ -35,6 +35,8 @@ class NodoArbol:
         self.hijos.append(hijo)
         # Ordenar hijos primero por columna (izquierda a derecha), luego por fila (arriba a abajo)
         self.hijos.sort(key=lambda n: (n.posicion[1], n.posicion[0]))  # Ordena por columna, luego por fila
+        
+        
 class Laberinto:
     def __init__(self, root, rows=8, cols=8, expansiones_por_actualizacion=2):
         self.root = root
@@ -50,9 +52,8 @@ class Laberinto:
         self.maze = [[0 for _ in range(cols)] for _ in range(rows)]  
         
         
-        self.raton_pos = (1, 5)  # aqui define la Posición del ratón
-        self.raton_pos = (1, 5)  # aqui define la Posición del ratón
-        self.queso_pos = (6, 6)  # lo mismo con la Posición del queso
+        self.raton_pos = (0, 0)  # aqui define la Posición del ratón
+        self.queso_pos = (0, 6)  # lo mismo con la Posición del queso
         self.bloques_grises = [(1,1), (4,3), (2,1), (3,4),(7,2), (6,5),(4,2),(1,3),(1,1)]  # aqui ubica las Paredes/bloques grises donde le de la gana
 
         
@@ -166,7 +167,26 @@ class Laberinto:
                 if resultado:
                     print(f"¡Queso encontrado con BFS después de {expansiones_totales} expansiones!")
                     return
-
+                
+            elif metodo_actual == "UCS":
+                max_expansiones = self.solicitar_limite_expansiones("de Costo Uniforme")
+                resultado, expansiones, nodos_creados = self.busqueda_costo_uniforme(
+                    max_expansiones
+                )
+                expansiones_totales += expansiones
+                if resultado:
+                    print(f"¡Queso encontrado con búsqueda de costo uniforme después de {expansiones_totales} expansiones!")
+                    return
+                
+            elif metodo_actual == "avara":
+                max_expansiones = self.solicitar_limite_expansiones("Avara")
+                resultado, expansiones, nodos_creados = self.busqueda_avara(
+                    max_expansiones
+                )
+                expansiones_totales += expansiones
+                if resultado:
+                    print(f"¡Queso encontrado con búsqueda Avara después de {expansiones_totales} expansiones!")
+                    return    
                 # Modificamos cómo se agregan los nodos generados a la pila de DFS:
                 for nodo_bfs in reversed(nodos_creados):  # Lo invertimos para que el primero añadido sea el primero a expandir
                     pila_dfs.insert(0, nodo_bfs)  # Insertar al principio de la pila de DFS
@@ -200,6 +220,7 @@ class Laberinto:
                     self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0 and
                     nueva_posicion not in visitados):
                     movimientos_validos.append(nueva_posicion)
+                    expansiones += 1
 
             # Crear los nodos hijos (de izquierda a derecha)
             nodos_hijos = []
@@ -214,8 +235,7 @@ class Laberinto:
                 self.dibujar_arbol(nodo_actual, nuevo_nodo)
                 self.root.update()
                 time.sleep(0.5)
-
-                expansiones += 1
+ 
                 if expansiones >= max_expansiones:
                     print(f"Límite de expansiones alcanzado en DFS ({expansiones})")
                     return False, expansiones
@@ -352,7 +372,7 @@ class Laberinto:
         print(f"No se encontró el queso con DFS limitada a profundidad {profundidad_max}.")
         return False
         
-        
+    #Funciona solita
     def busqueda_costo_uniforme(self, max_expansiones):
         # Usamos una cola de prioridad (heap) para mantener los nodos ordenados por costo
         # El formato es (costo_acumulado, contador, nodo)
@@ -371,6 +391,7 @@ class Laberinto:
         while cola_prioridad and expansiones < max_expansiones:
             # Obtener el nodo con menor costo
             costo_actual, _, nodo_actual = heapq.heappop(cola_prioridad)
+            expansiones += 1
             posicion_actual = nodo_actual.posicion
 
             # Si ya visitamos esta posición, continuamos
@@ -418,7 +439,7 @@ class Laberinto:
                         self.root.update()
                         time.sleep(0.5)
 
-                        expansiones += 1
+                        
                         if expansiones >= max_expansiones:
                             print(f"Límite de expansiones alcanzado ({max_expansiones})")
                             return False, expansiones, nodos_creados
@@ -426,27 +447,80 @@ class Laberinto:
         print("No se encontró el queso")
         return False, expansiones, nodos_creados
 
-    def mostrar_camino_costo(self, nodo_final):
-        """Muestra el camino desde el inicio hasta el nodo final con los costos"""
-        camino = []
-        nodo_actual = nodo_final
-        costo_total = nodo_final.costos
+    #Heuristica
+    def heuristica_manhattan(self, pos1, pos2):
+        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
-        while nodo_actual:
-            camino.append((nodo_actual.posicion, nodo_actual.costos))
-            nodo_actual = nodo_actual.padre
+    #Funciona solita
+    def busqueda_avara(self, max_expansiones):
+        # Usamos una cola de prioridad (heap) para mantener los nodos ordenados por heurística
+        # El formato es (heuristica, contador, nodo)
+        # El contador es para desempatar cuando hay heurísticas iguales
+        cola_prioridad = []
+        contador = 0
+        nodo_inicial = NodoArbol(self.raton_pos)
+        heuristica_inicial = self.heuristica_manhattan(self.raton_pos, self.queso_pos)
+        heapq.heappush(cola_prioridad, (heuristica_inicial, contador, nodo_inicial))
+        
+        # Conjunto para marcar las posiciones visitadas
+        visitados = set()
+        expansiones = 0
+        nodos_creados = []
 
-        print("\nCamino encontrado (desde el final hasta el inicio):")
-        for posicion, costo in reversed(camino):
-            print(f"Posición: {posicion}, Costo acumulado: {costo}")
-        print(f"\nCosto total del camino: {costo_total}")
+        while cola_prioridad and expansiones < max_expansiones:
+            # Obtener el nodo con menor heurística
+            heuristica_actual, _, nodo_actual = heapq.heappop(cola_prioridad)
+            expansiones += 1
+            posicion_actual = nodo_actual.posicion
 
-        # Visualizar el camino en el laberinto
-        for posicion, _ in reversed(camino):
-            self.dibujar_nodo_lab(posicion)
-            self.root.update()
-            time.sleep(0.5)
-       
+            # Si ya visitamos esta posición, continuamos
+            if posicion_actual in visitados:
+                continue
+
+            # Marcar como visitado
+            visitados.add(posicion_actual)
+            
+            # Verificar si encontramos el queso
+            if posicion_actual == self.queso_pos:
+                print(f"¡Queso encontrado con búsqueda Avara!")
+                print(f"Total de expansiones realizadas: {expansiones}")
+                return True, expansiones, nodos_creados
+
+            # Expandir el nodo actual
+            for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:  # Izquierda, Arriba, Derecha, Abajo
+                nueva_posicion = (posicion_actual[0] + movimiento[0], 
+                                posicion_actual[1] + movimiento[1])
+                
+                # Verificar si el movimiento es válido
+                if (0 <= nueva_posicion[0] < self.rows and 
+                    0 <= nueva_posicion[1] < self.cols and 
+                    self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0 and
+                    nueva_posicion not in visitados):
+
+                    # Calcular la heurística (distancia de Manhattan)
+                    nueva_heuristica = self.heuristica_manhattan(nueva_posicion, self.queso_pos)
+                    contador += 1
+                    
+                    # Crear nuevo nodo
+                    nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
+                    nodo_actual.agregar_hijo(nuevo_nodo)
+                    nodos_creados.append(nuevo_nodo)
+                    
+                    # Agregar a la cola de prioridad
+                    heapq.heappush(cola_prioridad, (nueva_heuristica, contador, nuevo_nodo))
+                    
+                    # Visualización
+                    self.dibujar_nodo_lab(nueva_posicion)
+                    self.dibujar_arbol(nodo_actual, nuevo_nodo)
+                    self.root.update()
+                    time.sleep(0.5)
+                    if expansiones >= max_expansiones:
+                        print(f"Límite de expansiones alcanzado ({max_expansiones})")
+                        return False, expansiones, nodos_creados
+
+        print("No se encontró el queso")
+        return False, expansiones, nodos_creados
+
    
     def dibujar_nodo_lab(self, posicion):
         time.sleep(1)
