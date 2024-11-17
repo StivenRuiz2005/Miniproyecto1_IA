@@ -65,10 +65,18 @@ class Laberinto:
     
         self.dibujar_laberinto()
         self.crear_area_arbol()
-
+            
+        self.estrategia_label = tk.Label(self.root, text="Estrategia: Ninguna")
+        self.estrategia_label.grid(row=1, column=0, pady=10)
         
-        self.boton_iniciar = tk.Button(self.root, text="Iniciar", command=self.iniciar_busqueda)
-        self.boton_iniciar.grid(row=1, column=0, pady=10)
+        self.estrategia_label1 = tk.Label(self.root, text="Sin encontrar queso")
+        self.estrategia_label1.grid(row=1, column=1, pady=10)
+
+        self.boton_iniciar = tk.Button(self.root, text="Iniciar programa", command=self.iniciar_busqueda)
+        self.boton_iniciar.grid(row=2, column=0, pady=10)
+    def actualizar_interfaz_estrategia(self, nombre_estrategia):
+    # Actualizar la interfaz con el nombre de la estrategia actual
+        self.estrategia_label.config(text=f"Estrategia: {nombre_estrategia}")
 
     def cargar_imagenes(self, path):
         adjusted_width = int(self.cell_width * self.image_scale_factor)
@@ -140,25 +148,22 @@ class Laberinto:
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
+        global nodo_inicial
         nodo_inicial = NodoArbol(self.raton_pos)
-
-        if metodo_actual == "DFS":
-            pila_dfs.append(nodo_inicial)
-        elif metodo_actual == "BFS":
-            cola_bfs.append((nodo_inicial, 0))
 
         while True:
             if metodo_actual == "DFS":
+                self.actualizar_interfaz_estrategia("DFS")
                 max_expansiones = self.solicitar_limite_expansiones("DFS")
                 resultado, expansiones = self.busqueda_dfs(
                     pila_dfs, visitados, max_expansiones
                 )
                 expansiones_totales += expansiones
                 if resultado:
-                    print(f"¡Queso encontrado con DFS después de {expansiones_totales} expansiones!")
                     return
 
             elif metodo_actual == "BFS":
+                self.actualizar_interfaz_estrategia("BFS")
                 max_expansiones = self.solicitar_limite_expansiones("BFS")
                 resultado, expansiones, nodos_creados = self.busqueda_bfs(
                     cola_bfs, visitados, max_expansiones
@@ -169,6 +174,7 @@ class Laberinto:
                     return
                 
             elif metodo_actual == "UCS":
+                self.actualizar_interfaz_estrategia("UCS")
                 max_expansiones = self.solicitar_limite_expansiones("de Costo Uniforme")
                 resultado, expansiones, nodos_creados = self.busqueda_costo_uniforme(
                     max_expansiones
@@ -177,8 +183,16 @@ class Laberinto:
                 if resultado:
                     print(f"¡Queso encontrado con búsqueda de costo uniforme después de {expansiones_totales} expansiones!")
                     return
+            elif metodo_actual == "IDDFS":
+                self.actualizar_interfaz_estrategia("IDDFS")
+                max_expansiones = self.solicitar_limite_expansiones("IDDFS")
+                resultado = self.busqueda_iddfs(1, max_expansiones)
+                expansiones_totales += 1
+                if resultado:
+                    print(f"¡Queso encontrado con IDDFS después de {expansiones_totales} expansiones!")
                 
             elif metodo_actual == "avara":
+                self.actualizar_interfaz_estrategia("avara")
                 max_expansiones = self.solicitar_limite_expansiones("Avara")
                 resultado, expansiones, nodos_creados = self.busqueda_avara(
                     max_expansiones
@@ -187,6 +201,7 @@ class Laberinto:
                 if resultado:
                     print(f"¡Queso encontrado con búsqueda Avara después de {expansiones_totales} expansiones!")
                     return    
+                
                 # Modificamos cómo se agregan los nodos generados a la pila de DFS:
                 for nodo_bfs in reversed(nodos_creados):  # Lo invertimos para que el primero añadido sea el primero a expandir
                     pila_dfs.insert(0, nodo_bfs)  # Insertar al principio de la pila de DFS
@@ -200,15 +215,18 @@ class Laberinto:
             metodo_actual = random.choice(metodos_disponibles)
             metodos_disponibles.remove(metodo_actual)
 
+    #Funciona solita
     def busqueda_dfs(self, pila_dfs, visitados, max_expansiones):
+        pila_dfs.append(nodo_inicial)
         expansiones = 0
         while pila_dfs:
             nodo_actual = pila_dfs.pop()  # Continuamos con el último nodo añadido a la pila
+            expansiones += 1
             posicion_actual = nodo_actual.posicion
             print(f"Expandiendo nodo DFS: {posicion_actual}")  # Registro de la expansión
 
             if posicion_actual == self.queso_pos:
-                print("¡Queso encontrado con DFS!")
+                self.estrategia_label1.config(text="¡Queso encontrado con DFS!")
                 return True, expansiones
 
             # Recolectar movimientos válidos
@@ -220,7 +238,7 @@ class Laberinto:
                     self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0 and
                     nueva_posicion not in visitados):
                     movimientos_validos.append(nueva_posicion)
-                    expansiones += 1
+                    
 
             # Crear los nodos hijos (de izquierda a derecha)
             nodos_hijos = []
@@ -237,7 +255,7 @@ class Laberinto:
                 time.sleep(0.5)
  
                 if expansiones >= max_expansiones:
-                    print(f"Límite de expansiones alcanzado en DFS ({expansiones})")
+                    self.estrategia_label1.config(text="Límite de expansiones alcanzado")
                     return False, expansiones
 
             # Ahora los hijos se añaden en orden inverso, para que el hijo izquierdo se expanda primero
@@ -246,7 +264,9 @@ class Laberinto:
 
         return False, expansiones
 
+    #No funciona
     def busqueda_bfs(self, cola_bfs, visitados, max_expansiones):
+        cola_bfs.append((nodo_inicial, 0))  
         expansiones = 0
         nodos_creados = []  # Lista para almacenar los nodos generados
         while cola_bfs:
@@ -291,6 +311,7 @@ class Laberinto:
 
         return False, expansiones, nodos_creados
 
+    #No funciona
     def busqueda_iddfs(self, profundidad_max_inicial, max_expansiones):
         profundidad_max = profundidad_max_inicial
         expansiones_totales = 0
@@ -306,6 +327,7 @@ class Laberinto:
         print("Se alcanzó el límite máximo de expansiones para IDDFS.")
         return False
 
+    #No funciona
     def busqueda_dfs_limitada(self, profundidad_max):
 
         # Solicitar el límite de profundidad
@@ -323,6 +345,7 @@ class Laberinto:
 
         while pila_dfs:
             nodo_actual, profundidad = pila_dfs.pop()
+            expansiones_realizadas += 1
             posicion_actual = nodo_actual.posicion
 
             # Si encuentra el queso, retorna éxito
@@ -349,7 +372,7 @@ class Laberinto:
                         visitados.add(nueva_posicion)
 
                         # Contar la expansión realizada
-                        expansiones_realizadas += 1
+                        
 
                         # Dibujar el nodo en el laberinto y el árbol
                         self.dibujar_nodo_lab(nueva_posicion)
@@ -596,6 +619,6 @@ class Laberinto:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("Laberinto - Búsqueda por Amplitud")
+    root.title("Laberinto - Aplicando busquedas hibridas")
     app = Laberinto(root, expansiones_por_actualizacion=2)
     root.mainloop()
