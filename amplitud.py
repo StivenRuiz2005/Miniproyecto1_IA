@@ -6,7 +6,7 @@ import random
 import heapq
 
 class NodoArbol:
-    def __init__(self, posicion, padre=None, costo=0, altura=None):
+    def __init__(self, posicion, padre=None, costo=0, altura=0):
         self.posicion = posicion
         self.padre = padre
         self.hijos = []
@@ -142,11 +142,10 @@ class Laberinto:
         global nodos_no_expandidos
         nodos_no_expandidos = []
         pila_dfs = []
-        cola_bfs = deque()
         visitados = set([self.raton_pos])
         expansiones_totales = 0
 
-        metodos_disponibles = ["avara", "UCS"]
+        metodos_disponibles = ["BFS", "avara"]
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
@@ -167,9 +166,10 @@ class Laberinto:
             elif metodo_actual == "BFS":
                 self.actualizar_interfaz_estrategia("BFS")
                 max_expansiones = self.solicitar_limite_expansiones("BFS")
-                resultado, expansiones, nodos_creados = self.busqueda_bfs(
-                    cola_bfs, visitados, max_expansiones
+                resultado, expansiones = self.busqueda_bfs(
+                    max_expansiones
                 )
+                
                 expansiones_totales += expansiones
                 if resultado:
                     print(f"¡Queso encontrado con BFS después de {expansiones_totales} expansiones!")
@@ -263,22 +263,37 @@ class Laberinto:
         return False, expansiones
 
     #No funciona
-    def busqueda_bfs(self, cola_bfs, visitados, max_expansiones):
-        nodo_inicial = NodoArbol(self.raton_pos)
-        cola_bfs.append((nodo_inicial, 0))
+    def busqueda_bfs(self, max_expansiones):
+        global nodos_no_expandidos
+
+        cola_bfs = deque()
+        # Si existen nodos no expandidos, comenzamos con ellos
+        if nodos_no_expandidos:
+            # Ordenamos los nodos no expandidos por su altura (o cualquier otro criterio adecuado)
+            nodos_no_expandidos.sort(key=lambda nodo: nodo.altura)
+            # Añadimos esos nodos a la cola BFS
+            for nodo in nodos_no_expandidos:
+                cola_bfs.append((nodo, 0))  # La profundidad inicial es 0
+            nodos_no_expandidos = []  # Limpiamos la lista de nodos no expandidos
+        else:
+            # Si no hay nodos no expandidos, comenzamos con el nodo inicial
+            nodo_inicial = NodoArbol(self.raton_pos)
+            cola_bfs.append((nodo_inicial, 0))
+
         expansiones = 0
-        nodos_creados = []
+        visitados = set([self.raton_pos])  # Para llevar un seguimiento de las posiciones visitadas
 
         while cola_bfs:
             nodo_actual, profundidad = cola_bfs.popleft()
             posicion_actual = nodo_actual.posicion
             print(f"Expandiendo nodo BFS: {posicion_actual}")
 
+            # Verificar si encontramos el queso
             if posicion_actual == self.queso_pos:
                 print("¡Queso encontrado con BFS!")
-                return True, expansiones, nodos_creados
+                return True, expansiones
 
-            # Collect valid movements
+            # Recoger los movimientos válidos
             movimientos_validos = []
             for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
@@ -288,7 +303,7 @@ class Laberinto:
                     nueva_posicion not in visitados):
                     movimientos_validos.append(nueva_posicion)
 
-            # Create child nodes (left to right)
+            # Crear nodos hijos
             nodos_hijos = []
             for nueva_posicion in movimientos_validos:
                 nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
@@ -296,24 +311,36 @@ class Laberinto:
                 nodos_hijos.append(nuevo_nodo)
                 visitados.add(nueva_posicion)
 
-                # Draw nodes and update the tree
+                # Visualización
                 self.dibujar_nodo_lab(nueva_posicion)
                 self.dibujar_arbol(nodo_actual, nuevo_nodo)
                 self.root.update()
                 time.sleep(0.5)
 
-            # Count the expansion after all children are created
+            # Contamos la expansión después de crear todos los hijos
             if nodos_hijos:
                 expansiones += 1
 
+            # Comprobamos si hemos alcanzado el límite de expansiones
             if expansiones >= max_expansiones:
                 print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
-                return False, expansiones, nodos_creados
+                
+                nodos_no_expandidos.extend([nodo for nodo, _ in cola_bfs])
+                print(f"Agregando {len(cola_bfs)} nodos a la lista de no expandidos.")
+                return False, expansiones
 
-            nodos_creados.extend(nodos_hijos)  # Store created nodes for use by DFS
+
+            # Añadimos los nodos hijos a la cola de BFS
             cola_bfs.extend((nodo, profundidad + 1) for nodo in nodos_hijos)
+            
+            
+            if cola_bfs:
+                    nodos_no_expandidos.extend([nodo for nodo, _ in cola_bfs])
+                    print(f"Agregando {len(cola_bfs)} nodos a la lista de no expandidos.")
+            else:
+                    print("No se encontraron más nodos para expandir.")
 
-        return False, expansiones, nodos_creados
+        return False, expansiones
 
     #No funciona
     def busqueda_dfs_limitada(self, profundidad_max):
@@ -449,6 +476,7 @@ class Laberinto:
                         # Calcular el nuevo costo
                         nuevo_costo = costo_actual + 1  # Cada movimiento tiene costo 1
                         
+                        
                         # Si encontramos un camino mejor a esta posición
                         if nueva_posicion not in costos or nuevo_costo < costos[nueva_posicion]:
                             costos[nueva_posicion] = nuevo_costo
@@ -456,6 +484,7 @@ class Laberinto:
                             
                             # Crear nuevo nodo
                             nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual, costo=nuevo_costo)
+                            nuevo_nodo.altura = nodo_actual.altura + 1  # Cada movimiento tiene costo 1
                             nodo_actual.agregar_hijo(nuevo_nodo)
                             
                             # Agregar a la cola de prioridad
@@ -547,6 +576,7 @@ class Laberinto:
                     # Crear nuevo nodo
                     nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
                     nuevo_nodo.costos = nodo_actual.costos + 1  # Costo de movimiento
+                    nuevo_nodo.altura = nodo_actual.altura + 1  # Altura del nodo
                     nodo_actual.agregar_hijo(nuevo_nodo)
                     
                     # Agregar a la cola de prioridad
