@@ -16,10 +16,9 @@ class NodoArbol:
         self.profundidad = 0  # Profundidad Inicial
         self.left_value = 0  
 
-
         if padre is not None:
-            self.nivel = padre.nivel + 1  # El nivel es uno más que el del padre
-            self.profundidad = padre.profundidad + 1  # La profundidad es uno más que el del padre
+            self.nivel = padre.nivel + 1  
+            self.profundidad = padre.profundidad + 1  
             
             parent_x = padre.posicion[1]
             current_x = posicion[1]
@@ -32,10 +31,8 @@ class NodoArbol:
             self.left_value += padre.left_value
 
     def agregar_hijo(self, hijo):
-        """Agrega un hijo manteniendo el orden por posición y ajustando el valor de left_value"""
         self.hijos.append(hijo)
-        # Ordenar hijos primero por columna (izquierda a derecha), luego por fila (arriba a abajo)
-        self.hijos.sort(key=lambda n: (n.posicion[1], n.posicion[0]))  # Ordena por columna, luego por fila
+        self.hijos.sort(key=lambda n: (n.posicion[1], n.posicion[0])) 
         
         
 class Laberinto:
