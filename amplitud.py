@@ -144,7 +144,7 @@ class Laberinto:
         visitados = set([self.raton_pos])
         expansiones_totales = 0
 
-        metodos_disponibles = ["DFS"]
+        metodos_disponibles = ["IDDFS"]
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
@@ -173,6 +173,21 @@ class Laberinto:
                     print(f"¡Queso encontrado con BFS después de {expansiones_totales} expansiones!")
                     return
                 
+            elif metodo_actual == "DFSLI":
+                self.actualizar_interfaz_estrategia("DFSLI")
+                
+                # Solicitar límite de expansiones únicamente
+                max_expansiones = self.solicitar_limite_expansiones("DFSLI")
+                
+                # Ejecutar la búsqueda limitada (los límites de profundidad se solicitan dentro de la función)
+                resultado, expansiones = self.busqueda_dfs_limitada(max_expansiones)
+                
+                # toma las expanciones hechas y las 
+                expansiones_totales += expansiones
+                if resultado:
+                    return
+
+                
             elif metodo_actual == "UCS":
                 self.actualizar_interfaz_estrategia("UCS")
                 max_expansiones = self.solicitar_limite_expansiones("de Costo Uniforme")
@@ -183,10 +198,11 @@ class Laberinto:
                 if resultado:
                     print(f"¡Queso encontrado con búsqueda de costo uniforme después de {expansiones_totales} expansiones!")
                     return
+                
             elif metodo_actual == "IDDFS":
                 self.actualizar_interfaz_estrategia("IDDFS")
                 max_expansiones = self.solicitar_limite_expansiones("IDDFS")
-                resultado = self.busqueda_iddfs(1, max_expansiones)
+                resultado = self.busqueda_iddfs(max_expansiones)
                 expansiones_totales += 1
                 if resultado:
                     print(f"¡Queso encontrado con IDDFS después de {expansiones_totales} expansiones!")
@@ -264,18 +280,26 @@ class Laberinto:
 
         return False, expansiones
 
-    #No funciona
+    #funciona sola
     def busqueda_bfs(self, cola_bfs, visitados, max_expansiones):
-        cola_bfs.append((nodo_inicial, 0))  
+        # Inicializar la cola con el nodo inicial y la profundidad 0
+        nodo_inicial = NodoArbol(self.raton_pos)  
+        cola_bfs.append((nodo_inicial, 0))
+        visitados.add(self.raton_pos)  # Marcar la posición inicial como visitada, yo creo que esto hace parte del error
+
         expansiones = 0
-        nodos_creados = []  # Lista para almacenar los nodos generados
+        nodos_creados = []  # la lista para guardar los nodos generados
+
         while cola_bfs:
+            # Extraer el primer nodo de la cola
             nodo_actual, profundidad = cola_bfs.popleft()
             posicion_actual = nodo_actual.posicion
             print(f"Expandiendo nodo BFS: {posicion_actual}")  # Registro de expansión
 
+            # Si encuentra el queso, retorna éxito
             if posicion_actual == self.queso_pos:
                 print("¡Queso encontrado con BFS!")
+                self.mostrar_camino(nodo_actual)  # Mostrar el camino al queso si es necesario
                 return True, expansiones, nodos_creados
 
             # Recolectar movimientos válidos
@@ -288,13 +312,12 @@ class Laberinto:
                     nueva_posicion not in visitados):
                     movimientos_validos.append(nueva_posicion)
 
-            # Crear los nodos hijos (de izquierda a derecha)
-            nodos_hijos = []
+            # Crear los nodos hijos y agregarlos a la cola
             for nueva_posicion in movimientos_validos:
                 nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
-                nodo_actual.agregar_hijo(nuevo_nodo)
-                nodos_hijos.append(nuevo_nodo)
-                visitados.add(nueva_posicion)
+                nodo_actual.agregar_hijo(nuevo_nodo)  # Agregar hijo al árbol
+                visitados.add(nueva_posicion)  # Marcar como visitado
+                cola_bfs.append((nuevo_nodo, profundidad + 1))  # Agregar a la cola con profundidad aumentada
 
                 # Dibujar los nodos y actualizar el árbol
                 self.dibujar_nodo_lab(nueva_posicion)
@@ -302,41 +325,113 @@ class Laberinto:
                 self.root.update()
                 time.sleep(0.5)
 
+                # Incrementar el contador de expansiones
                 expansiones += 1
                 if expansiones >= max_expansiones:
                     print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
                     return False, expansiones, nodos_creados
 
-            nodos_creados.extend(nodos_hijos)  # Almacenar los nodos creados para ser utilizados por DFS
+                nodos_creados.append(nuevo_nodo)  # Agregar nodo a la lista de nodos creados
 
+        # Si se agota la cola y no se encuentra el queso
+        print("No se encontró el queso con BFS.")
         return False, expansiones, nodos_creados
 
-    #No funciona
-    def busqueda_iddfs(self, profundidad_max_inicial, max_expansiones):
-        profundidad_max = profundidad_max_inicial
-        expansiones_totales = 0
+    #se supone que funciona
+    def busqueda_iddfs(self, max_expansiones):
+        """
+        Realiza la búsqueda por profundidad iterativa (IDDFS).
+        Una vez alcanzado el límite de expansiones, expande solo los últimos nodos generados.
+        """
+        print(f"Iniciando búsqueda IDDFS con límite de expansiones: {max_expansiones}")
 
-        while profundidad_max <= max_expansiones:
-            encontrado = self.busqueda_dfs_limitada(profundidad_max)
-            if encontrado:
-                return True
+        profundidad_max = 1  # Comienza con una profundidad inicial de 1
+        expansiones_totales = 0  # Contador de expansiones
+        nodo_inicial = NodoArbol(self.raton_pos)  # Nodo raíz del árbol
+        visitados = set([self.raton_pos])  # Conjunto de posiciones ya visitadas
+        cola_nodos = [(nodo_inicial, 0)]  # Contendrá los nodos finales de cada iteración
+
+        while expansiones_totales < max_expansiones:
+            print(f"Iniciando iteración con profundidad máxima: {profundidad_max}")
+
+            nueva_cola = []  # Contendrá solo los nodos generados en esta iteración
+            for nodo_actual, profundidad in cola_nodos:
+                # Expandir los nodos hijos de los nodos finales generados previamente
+                posicion_actual = nodo_actual.posicion
+                for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                    nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
+
+                    # Validar la nueva posición
+                    if (0 <= nueva_posicion[0] < self.rows and
+                        0 <= nueva_posicion[1] < self.cols and
+                        self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0 and
+                        nueva_posicion not in visitados):
+
+                        # Crear un nuevo nodo hijo
+                        nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
+                        nodo_actual.agregar_hijo(nuevo_nodo)
+                        nueva_cola.append((nuevo_nodo, profundidad + 1))
+                        visitados.add(nueva_posicion)
+
+                        # Dibujar el nuevo nodo en el laberinto y el árbol
+                        self.dibujar_nodo_lab(nueva_posicion)
+                        self.dibujar_arbol(nodo_actual, nuevo_nodo)
+                        self.root.update()
+                        time.sleep(0.5)
+
+                        expansiones_totales += 1
+
+                        # Verificar si se alcanzó el límite de expansiones
+                        if expansiones_totales >= max_expansiones:
+                            print(f"Límite máximo de expansiones alcanzado: {max_expansiones}")
+                            # Expansión de los últimos nodos creados
+                            for nodo_final, _ in nueva_cola:
+                                posicion_final = nodo_final.posicion
+                                for movimiento_final in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                                    nueva_posicion_final = (posicion_final[0] + movimiento_final[0], posicion_final[1] + movimiento_final[1])
+
+                                    # Validar la posición de los hijos finales
+                                    if (0 <= nueva_posicion_final[0] < self.rows and
+                                        0 <= nueva_posicion_final[1] < self.cols and
+                                        self.maze[nueva_posicion_final[0]][nueva_posicion_final[1]] == 0 and
+                                        nueva_posicion_final not in visitados):
+
+                                        # Crear y dibujar los hijos de los nodos finales
+                                        nodo_hijo_final = NodoArbol(nueva_posicion_final, nodo_final)
+                                        nodo_final.agregar_hijo(nodo_hijo_final)
+                                        self.dibujar_nodo_lab(nueva_posicion_final)
+                                        self.dibujar_arbol(nodo_final, nodo_hijo_final)
+                                        self.root.update()
+                                        time.sleep(0.5)
+                            return True
+
+            # Avanza a los nodos finales generados en esta iteración
+            cola_nodos = nueva_cola
+
+            # Si no hay nuevos nodos para expandir, se detiene la búsqueda
+            if not cola_nodos:
+                print("No hay más nodos para expandir.")
+                break
+
+            # Incrementa la profundidad máxima
             profundidad_max += 1
-            expansiones_totales += 1
-            print(f"Aumentando la profundidad a {profundidad_max}.")
 
-        print("Se alcanzó el límite máximo de expansiones para IDDFS.")
+        print(f"No se encontró el queso después de {expansiones_totales} expansiones con IDDFS.")
         return False
 
-    #No funciona
+
+
+    #Funciona solita
     def busqueda_dfs_limitada(self, profundidad_max):
 
-        # Solicitar el límite de profundidad
+        # Solicitar el límite de profundidad 
         try:
             limite_profu = int(input("Ingrese el límite de profundidad deseado: "))
         except ValueError:
-            print("Por favor, ingrese un número entero.")
-            return self.busqueda_dfs_limitada()
+                print("Por favor, ingrese un número entero.")
+                return self.busqueda_dfs_limitada()
 
+        
 
         pila_dfs = [(NodoArbol(self.raton_pos), 0)]  # La pila contendrá el nodo y la profundidad
         visitados = set([self.raton_pos])
@@ -352,7 +447,7 @@ class Laberinto:
             if posicion_actual == self.queso_pos:
                 print(f"¡Queso encontrado con DFS limitada a profundidad {profundidad_max}!")
                 self.mostrar_camino(nodo_actual)  # Mostrar el camino si es necesario
-                return True
+                return True, expansiones_realizadas
 
             # Solo seguir expandiendo si no hemos alcanzado la profundidad máxima
             if profundidad < limite_profu and expansiones_realizadas < profundidad_max:
@@ -383,18 +478,15 @@ class Laberinto:
                         # Verificar si se alcanzó el límite de expansiones
                     if expansiones_realizadas >= profundidad_max:
                         print(f"Límite de expansiones alcanzado: {profundidad_max}")
-                        return False
-
-            # Detener si se alcanza el límite de profundidad
-        if profundidad >= profundidad_max:
-            print(f"Límite de profundidad alcanzado: {profundidad_max}")
-            return False
+                        return False, expansiones_realizadas
 
 
         # Si la búsqueda DFS limitada no encuentra el queso, retornar False
         print(f"No se encontró el queso con DFS limitada a profundidad {profundidad_max}.")
-        return False
+        return False, expansiones_realizadas
         
+
+
     #Funciona solita
     def busqueda_costo_uniforme(self, max_expansiones):
         # Usamos una cola de prioridad (heap) para mantener los nodos ordenados por costo
