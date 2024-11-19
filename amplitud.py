@@ -6,7 +6,7 @@ import random
 import heapq
 
 class NodoArbol:
-    def __init__(self, posicion, padre=None, costo=None, altura=None):
+    def __init__(self, posicion, padre=None, costo=0, altura=None):
         self.posicion = posicion
         self.padre = padre
         self.hijos = []
@@ -137,14 +137,16 @@ class Laberinto:
             print("Por favor, ingrese un número entero.")
             return self.solicitar_limite_expansiones(tipo_busqueda)
 
-
+    
     def realizar_busqueda_hibrida(self):
+        global nodos_no_expandidos
+        nodos_no_expandidos = []
         pila_dfs = []
         cola_bfs = deque()
         visitados = set([self.raton_pos])
         expansiones_totales = 0
 
-        metodos_disponibles = ["BFS"]
+        metodos_disponibles = ["avara", "UCS"]
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
@@ -176,7 +178,7 @@ class Laberinto:
             elif metodo_actual == "UCS":
                 self.actualizar_interfaz_estrategia("UCS")
                 max_expansiones = self.solicitar_limite_expansiones("de Costo Uniforme")
-                resultado, expansiones, nodos_creados = self.busqueda_costo_uniforme(
+                resultado, expansiones = self.busqueda_costo_uniforme(
                     max_expansiones
                 )
                 expansiones_totales += expansiones
@@ -194,7 +196,7 @@ class Laberinto:
             elif metodo_actual == "avara":
                 self.actualizar_interfaz_estrategia("avara")
                 max_expansiones = self.solicitar_limite_expansiones("Avara")
-                resultado, expansiones, nodos_creados = self.busqueda_avara(
+                resultado, expansiones = self.busqueda_avara(
                     max_expansiones
                 )
                 expansiones_totales += expansiones
@@ -202,10 +204,6 @@ class Laberinto:
                     print(f"¡Queso encontrado con búsqueda Avara después de {expansiones_totales} expansiones!")
                     return    
                 
-                # Modificamos cómo se agregan los nodos generados a la pila de DFS:
-                for nodo_bfs in reversed(nodos_creados):  # Lo invertimos para que el primero añadido sea el primero a expandir
-                    pila_dfs.insert(0, nodo_bfs)  # Insertar al principio de la pila de DFS
-
             if not metodos_disponibles:
                 print(f"Expansiones totales: {expansiones_totales}")
                 print("No se encontró el queso después de probar todas las búsquedas.")
@@ -386,79 +384,98 @@ class Laberinto:
         return False
         
     #Funciona solita
+ 
+
     def busqueda_costo_uniforme(self, max_expansiones):
-        # Usamos una cola de prioridad (heap) para mantener los nodos ordenados por costo
-        # El formato es (costo_acumulado, contador, nodo)
-        # El contador es para desempatar cuando hay costos iguales
-        cola_prioridad = []
-        contador = 0
-        nodo_inicial = NodoArbol(self.raton_pos)
-        heapq.heappush(cola_prioridad, (0, contador, nodo_inicial))
-        
-        # Diccionario para mantener el costo mínimo conocido a cada posición
-        costos = {self.raton_pos: 0}
-        visitados = set()
-        expansiones = 0
-        nodos_creados = []
+            global nodos_no_expandidos
 
-        while cola_prioridad and expansiones < max_expansiones:
-            # Obtener el nodo con menor costo
-            costo_actual, _, nodo_actual = heapq.heappop(cola_prioridad)
-            expansiones += 1
-            posicion_actual = nodo_actual.posicion
+            # Usamos una cola de prioridad (heap) para mantener los nodos ordenados por costo
+            # El formato es (costo_acumulado, contador, nodo)
+            # El contador es para desempatar cuando hay costos iguales
+            cola_prioridad = []
+            contador = 0
+            visitados = set()
+            costos = {}
 
-            # Si ya visitamos esta posición, continuamos
-            if posicion_actual in visitados:
-                continue
+            # Si hay nodos no expandidos, agrégalos a la cola
+            if nodos_no_expandidos:
+                for nodo in nodos_no_expandidos:
+                    heapq.heappush(cola_prioridad, (nodo.costos, contador, nodo))
+                    contador += 1
+                    costos[nodo.posicion] = nodo.costos
+                print(f"Continuando desde nodos no expandidos: {len(nodos_no_expandidos)} nodos")
+                nodos_no_expandidos = []  # Reiniciamos la lista de nodos no expandidos
+            else:
+                # Crear y agregar el nodo inicial si no hay nodos previos
+                nodo_inicial = NodoArbol(self.raton_pos)
+                heapq.heappush(cola_prioridad, (0, contador, nodo_inicial))
+                contador += 1
+                costos[self.raton_pos] = 0
 
-            # Marcar como visitado
-            visitados.add(posicion_actual)
-            
-            # Verificar si encontramos el queso
-            if posicion_actual == self.queso_pos:
-                print(f"¡Queso encontrado con búsqueda de costo uniforme!")
-                print(f"Costo total del camino: {costo_actual}")
-                return True, expansiones, nodos_creados
+            expansiones = 0
 
-            # Expandir el nodo actual
-            for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:  # Izquierda, Arriba, Derecha, Abajo
-                nueva_posicion = (posicion_actual[0] + movimiento[0], 
-                                posicion_actual[1] + movimiento[1])
-                
-                # Verificar si el movimiento es válido
-                if (0 <= nueva_posicion[0] < self.rows and 
-                    0 <= nueva_posicion[1] < self.cols and 
-                    self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0):
+            while expansiones < max_expansiones:
+                # Obtener el nodo con menor costo
+                costo_actual, _, nodo_actual = heapq.heappop(cola_prioridad)
+                posicion_actual = nodo_actual.posicion
 
-                    # Calcular el nuevo costo
-                    nuevo_costo = costo_actual + 1  # Cada movimiento tiene costo 1
-                    
-                    # Si encontramos un camino mejor a esta posición
-                    if nueva_posicion not in costos or nuevo_costo < costos[nueva_posicion]:
-                        costos[nueva_posicion] = nuevo_costo
-                        contador += 1
+                # Si ya visitamos esta posición, continuamos
+                if posicion_actual in visitados:
+                    continue
+
+                # Marcar como visitado
+                visitados.add(posicion_actual)
+                expansiones += 1
+                print(f"Expandiendo nodo: {posicion_actual} con costo {costo_actual}")
+
+                # Verificar si encontramos el queso
+                if posicion_actual == self.queso_pos:
+                    print(f"¡Queso encontrado con búsqueda de costo uniforme!")
+                    print(f"Costo total del camino: {costo_actual}")
+                    return True, expansiones
+
+                # Expandir el nodo actual
+                for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:  # Izquierda, Arriba, Derecha, Abajo
+                    nueva_posicion = (
+                        posicion_actual[0] + movimiento[0],
+                        posicion_actual[1] + movimiento[1]
+                    )
+
+                    # Verificar si el movimiento es válido
+                    if (0 <= nueva_posicion[0] < self.rows and 
+                        0 <= nueva_posicion[1] < self.cols and 
+                        self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0):
+
+                        # Calcular el nuevo costo
+                        nuevo_costo = costo_actual + 1  # Cada movimiento tiene costo 1
                         
-                        # Crear nuevo nodo
-                        nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual, costo=nuevo_costo)
-                        nodo_actual.agregar_hijo(nuevo_nodo)
-                        nodos_creados.append(nuevo_nodo)
-                        
-                        # Agregar a la cola de prioridad
-                        heapq.heappush(cola_prioridad, (nuevo_costo, contador, nuevo_nodo))
-                        
-                        # Visualización
-                        self.dibujar_nodo_lab(nueva_posicion)
-                        self.dibujar_arbol(nodo_actual, nuevo_nodo)
-                        self.root.update()
-                        time.sleep(0.5)
+                        # Si encontramos un camino mejor a esta posición
+                        if nueva_posicion not in costos or nuevo_costo < costos[nueva_posicion]:
+                            costos[nueva_posicion] = nuevo_costo
+                            contador += 1
+                            
+                            # Crear nuevo nodo
+                            nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual, costo=nuevo_costo)
+                            nodo_actual.agregar_hijo(nuevo_nodo)
+                            
+                            # Agregar a la cola de prioridad
+                            heapq.heappush(cola_prioridad, (nuevo_costo, contador, nuevo_nodo))
+                            
+                            # Visualización
+                            self.dibujar_nodo_lab(nueva_posicion)
+                            self.dibujar_arbol(nodo_actual, nuevo_nodo)
+                            self.root.update()
+                            time.sleep(0.5)
 
-                        
-                        if expansiones >= max_expansiones:
-                            print(f"Límite de expansiones alcanzado ({max_expansiones})")
-                            return False, expansiones, nodos_creados
+            # Si terminamos sin encontrar el queso
+            if cola_prioridad:
+                nodos_no_expandidos.extend([nodo for _, _, nodo in cola_prioridad])
+                print(f"Agregando {len(cola_prioridad)} nodos a la lista de no expandidos.")
+            else:
+                print("No se encontraron más nodos para expandir.")
 
-        print("No se encontró el queso")
-        return False, expansiones, nodos_creados
+            print("No se encontró el queso")
+            return False, expansiones
 
     #Heuristica
     def heuristica_manhattan(self, pos1, pos2):
@@ -466,24 +483,33 @@ class Laberinto:
 
     #Funciona solita
     def busqueda_avara(self, max_expansiones):
+        global nodos_no_expandidos
         # Usamos una cola de prioridad (heap) para mantener los nodos ordenados por heurística
         # El formato es (heuristica, contador, nodo)
-        # El contador es para desempatar cuando hay heurísticas iguales
         cola_prioridad = []
         contador = 0
-        nodo_inicial = NodoArbol(self.raton_pos)
-        heuristica_inicial = self.heuristica_manhattan(self.raton_pos, self.queso_pos)
-        heapq.heappush(cola_prioridad, (heuristica_inicial, contador, nodo_inicial))
-        
-        # Conjunto para marcar las posiciones visitadas
         visitados = set()
+        
+        # Si hay nodos no expandidos, agrégalos a la cola
+        if nodos_no_expandidos:
+            for nodo in nodos_no_expandidos:
+                heuristica = self.heuristica_manhattan(nodo.posicion, self.queso_pos)
+                heapq.heappush(cola_prioridad, (heuristica, contador, nodo))
+                contador += 1
+            print(f"Continuando desde nodos no expandidos: {len(nodos_no_expandidos)} nodos")
+            nodos_no_expandidos = []  # Reiniciar la lista global de nodos no expandidos
+        else:
+            # Crear y agregar el nodo inicial si no hay nodos previos
+            nodo_inicial = NodoArbol(self.raton_pos)
+            heuristica_inicial = self.heuristica_manhattan(self.raton_pos, self.queso_pos)
+            heapq.heappush(cola_prioridad, (heuristica_inicial, contador, nodo_inicial))
+            contador += 1
+
         expansiones = 0
-        nodos_creados = []
 
         while cola_prioridad and expansiones < max_expansiones:
             # Obtener el nodo con menor heurística
             heuristica_actual, _, nodo_actual = heapq.heappop(cola_prioridad)
-            expansiones += 1
             posicion_actual = nodo_actual.posicion
 
             # Si ya visitamos esta posición, continuamos
@@ -492,18 +518,22 @@ class Laberinto:
 
             # Marcar como visitado
             visitados.add(posicion_actual)
-            
+            expansiones += 1
+            print(f"Expandiendo nodo: {posicion_actual} con heurística {heuristica_actual}")
+
             # Verificar si encontramos el queso
             if posicion_actual == self.queso_pos:
                 print(f"¡Queso encontrado con búsqueda Avara!")
                 print(f"Total de expansiones realizadas: {expansiones}")
-                return True, expansiones, nodos_creados
+                return True, expansiones
 
             # Expandir el nodo actual
             for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:  # Izquierda, Arriba, Derecha, Abajo
-                nueva_posicion = (posicion_actual[0] + movimiento[0], 
-                                posicion_actual[1] + movimiento[1])
-                
+                nueva_posicion = (
+                    posicion_actual[0] + movimiento[0],
+                    posicion_actual[1] + movimiento[1]
+                )
+
                 # Verificar si el movimiento es válido
                 if (0 <= nueva_posicion[0] < self.rows and 
                     0 <= nueva_posicion[1] < self.cols and 
@@ -516,8 +546,8 @@ class Laberinto:
                     
                     # Crear nuevo nodo
                     nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
+                    nuevo_nodo.costos = nodo_actual.costos + 1  # Costo de movimiento
                     nodo_actual.agregar_hijo(nuevo_nodo)
-                    nodos_creados.append(nuevo_nodo)
                     
                     # Agregar a la cola de prioridad
                     heapq.heappush(cola_prioridad, (nueva_heuristica, contador, nuevo_nodo))
@@ -527,12 +557,16 @@ class Laberinto:
                     self.dibujar_arbol(nodo_actual, nuevo_nodo)
                     self.root.update()
                     time.sleep(0.5)
-                    if expansiones >= max_expansiones:
-                        print(f"Límite de expansiones alcanzado ({max_expansiones})")
-                        return False, expansiones, nodos_creados
+
+        # Si terminamos sin encontrar el queso
+        if cola_prioridad:
+            nodos_no_expandidos.extend([nodo for _, _, nodo in cola_prioridad])
+            print(f"Agregando {len(cola_prioridad)} nodos a la lista de no expandidos.")
+        else:
+            print("No se encontraron más nodos para expandir.")
 
         print("No se encontró el queso")
-        return False, expansiones, nodos_creados
+        return False, expansiones
 
    
     def dibujar_nodo_lab(self, posicion):
