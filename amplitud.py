@@ -52,7 +52,7 @@ class Laberinto:
         self.maze = [[0 for _ in range(cols)] for _ in range(rows)]  
         
         
-        self.raton_pos = (0, 0)  # aqui define la Posición del ratón
+        self.raton_pos = (6, 1)  # aqui define la Posición del ratón
         self.queso_pos = (0, 6)  # lo mismo con la Posición del queso
         self.bloques_grises = [(1,1), (4,3), (2,1), (3,4),(7,2), (6,5),(4,2),(1,3),(1,1)]  # aqui ubica las Paredes/bloques grises donde le de la gana
 
@@ -144,7 +144,7 @@ class Laberinto:
         visitados = set([self.raton_pos])
         expansiones_totales = 0
 
-        metodos_disponibles = ["DFS"]
+        metodos_disponibles = ["BFS"]
         metodo_actual = random.choice(metodos_disponibles)
         metodos_disponibles.remove(metodo_actual)
 
@@ -266,19 +266,21 @@ class Laberinto:
 
     #No funciona
     def busqueda_bfs(self, cola_bfs, visitados, max_expansiones):
-        cola_bfs.append((nodo_inicial, 0))  
+        nodo_inicial = NodoArbol(self.raton_pos)
+        cola_bfs.append((nodo_inicial, 0))
         expansiones = 0
-        nodos_creados = []  # Lista para almacenar los nodos generados
+        nodos_creados = []
+
         while cola_bfs:
             nodo_actual, profundidad = cola_bfs.popleft()
             posicion_actual = nodo_actual.posicion
-            print(f"Expandiendo nodo BFS: {posicion_actual}")  # Registro de expansión
+            print(f"Expandiendo nodo BFS: {posicion_actual}")
 
             if posicion_actual == self.queso_pos:
                 print("¡Queso encontrado con BFS!")
                 return True, expansiones, nodos_creados
 
-            # Recolectar movimientos válidos
+            # Collect valid movements
             movimientos_validos = []
             for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
@@ -288,7 +290,7 @@ class Laberinto:
                     nueva_posicion not in visitados):
                     movimientos_validos.append(nueva_posicion)
 
-            # Crear los nodos hijos (de izquierda a derecha)
+            # Create child nodes (left to right)
             nodos_hijos = []
             for nueva_posicion in movimientos_validos:
                 nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
@@ -296,36 +298,24 @@ class Laberinto:
                 nodos_hijos.append(nuevo_nodo)
                 visitados.add(nueva_posicion)
 
-                # Dibujar los nodos y actualizar el árbol
+                # Draw nodes and update the tree
                 self.dibujar_nodo_lab(nueva_posicion)
                 self.dibujar_arbol(nodo_actual, nuevo_nodo)
                 self.root.update()
                 time.sleep(0.5)
 
+            # Count the expansion after all children are created
+            if nodos_hijos:
                 expansiones += 1
-                if expansiones >= max_expansiones:
-                    print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
-                    return False, expansiones, nodos_creados
 
-            nodos_creados.extend(nodos_hijos)  # Almacenar los nodos creados para ser utilizados por DFS
+            if expansiones >= max_expansiones:
+                print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
+                return False, expansiones, nodos_creados
+
+            nodos_creados.extend(nodos_hijos)  # Store created nodes for use by DFS
+            cola_bfs.extend((nodo, profundidad + 1) for nodo in nodos_hijos)
 
         return False, expansiones, nodos_creados
-
-    #No funciona
-    def busqueda_iddfs(self, profundidad_max_inicial, max_expansiones):
-        profundidad_max = profundidad_max_inicial
-        expansiones_totales = 0
-
-        while profundidad_max <= max_expansiones:
-            encontrado = self.busqueda_dfs_limitada(profundidad_max)
-            if encontrado:
-                return True
-            profundidad_max += 1
-            expansiones_totales += 1
-            print(f"Aumentando la profundidad a {profundidad_max}.")
-
-        print("Se alcanzó el límite máximo de expansiones para IDDFS.")
-        return False
 
     #No funciona
     def busqueda_dfs_limitada(self, profundidad_max):
