@@ -12,9 +12,9 @@ class NodoArbol:
         self.hijos = []
         self.costos = costo
         self.altura = altura
-        self.nivel = 0  # El nivel es 0 por defecto
-        self.profundidad = 0  # La profundidad es 0 por defecto (se usará en DFS)
-        self.left_value = 0  # Para identificar el nodo más a la izquierda
+        self.nivel = 0 #Nivel inicial
+        self.profundidad = 0  # Profundidad Inicial
+        self.left_value = 0  
 
 
         if padre is not None:
@@ -43,22 +43,22 @@ class Laberinto:
         self.root = root
         self.rows = rows
         self.cols = cols
-        self.cell_width = 50  # aqui acomoda el Ancho de cada celda
-        self.cell_height = 50  # lo mismo Alto de cada celda
-        self.image_scale_factor = 0.93  # esta mkd es para que la imagen no tape los bordes de las celdas, se escala un poco menos al 93
+        self.cell_width = 50  #Ancho Celda
+        self.cell_height = 50  # Alto Celda
+        self.image_scale_factor = 0.93  # Esto es para que la imagen no tape los bordes de las celdas, se escala un poco menos al 93
         self.expansiones_por_actualizacion = expansiones_por_actualizacion
         self.nodo_padre_coords = {}
-        self.hijos_contador = {}  # Agregar un contador de hijos por nodo
+        self.hijos_contador = {}  # Contador de Hijos
 
         self.maze = [[0 for _ in range(cols)] for _ in range(rows)]  
         
         
-        self.raton_pos = (0, 3)  # aqui define la Posición del ratón
-        self.queso_pos = (2, 5)  # lo mismo con la Posición del queso
-        self.bloques_grises = [(0,2), (3,3), (1,4), (3,2)]  # aqui ubica las Paredes/bloques grises donde le de la gana
+        self.raton_pos = (0, 3)  # Posición del Ratón
+        self.queso_pos = (2, 5)  # Posición del Queso
+        self.bloques_grises = [(0,2), (3,3), (1,4), (3,2)]  # Paredes y obstaculos
 
         
-        self.raton_image = self.cargar_imagenes(r"Images/Raton.png")#no se le olvide combiar la ruta de las imagenes o paila no se ejecuta esta monda
+        self.raton_image = self.cargar_imagenes(r"Images/Raton.png")
         self.queso_image = self.cargar_imagenes(r"Images/queso.png")
 
         self.iniciar_laberinto()
@@ -75,8 +75,9 @@ class Laberinto:
 
         self.boton_iniciar = tk.Button(self.root, text="Iniciar programa", command=self.iniciar_busqueda)
         self.boton_iniciar.grid(row=2, column=0, pady=10)
+        
     def actualizar_interfaz_estrategia(self, nombre_estrategia):
-    # Actualizar la interfaz con el nombre de la estrategia actual
+        
         self.estrategia_label.config(text=f"Estrategia: {nombre_estrategia}")
 
     def cargar_imagenes(self, path):
@@ -88,7 +89,7 @@ class Laberinto:
     def iniciar_laberinto(self):
         for bloque in self.bloques_grises:
             row, col = bloque
-            self.maze[row][col] = 1  # esto representa un bloque o pared
+            self.maze[row][col] = 1 
 
     def dibujar_laberinto(self):
         self.canvas = tk.Canvas(self.root, width=self.cols * self.cell_width, height=self.rows * self.cell_height)
@@ -125,23 +126,23 @@ class Laberinto:
         frame_contenedor = tk.Frame(self.root, bg="white")
         frame_contenedor.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
 
-        # Crear un canvas para dibujar el árbol
+
         self.canvas_arbol = tk.Canvas(frame_contenedor, width=700, height=600, bg="white")
         self.canvas_arbol.grid(row=0, column=0, sticky="nsew")
 
-        # Crear un scrollbar vertical y asociarlo al canvas
+
         scrollbar_y = tk.Scrollbar(frame_contenedor, orient="vertical", command=self.canvas_arbol.yview)
-        scrollbar_y.grid(row=0, column=1, sticky="ns")  # Colocar al borde derecho del canvas
+        scrollbar_y.grid(row=0, column=1, sticky="ns")  
 
-        # Crear un scrollbar horizontal y asociarlo al canvas
+
         scrollbar_x = tk.Scrollbar(frame_contenedor, orient="horizontal", command=self.canvas_arbol.xview)
-        scrollbar_x.grid(row=1, column=0, sticky="ew")  # Colocar en la parte inferior del canvas
+        scrollbar_x.grid(row=1, column=0, sticky="ew") 
 
-        # Configurar el canvas para trabajar con los scrollbars
+
         self.canvas_arbol.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
         self.canvas_arbol.configure(scrollregion=(0, 0, 3000, 3000))
 
-        # Configurar el frame contenedor para redimensionarse correctamente
+
         frame_contenedor.grid_rowconfigure(0, weight=1)
         frame_contenedor.grid_columnconfigure(0, weight=1)
 
@@ -235,22 +236,21 @@ class Laberinto:
                 print("No se encontró el queso después de probar todas las búsquedas.")
                 break
 
-            # Switch to the next available method
             metodo_actual = random.choice(metodos_disponibles)
             metodos_disponibles.remove(metodo_actual)
 
     #Funciona solita
     def busqueda_dfs(self, max_expansiones):
         global nodos_no_expandidos
-        visitados = set([self.raton_pos])  # Conjunto para rastrear las posiciones visitadas
+        visitados = set([self.raton_pos])  #Puse esto para poder guardar los visitados
         pila_dfs = []
 
         # Si hay nodos no expandidos, los procesamos primero
         if nodos_no_expandidos:
-            nodos_no_expandidos.sort(key=lambda nodo: nodo.altura, reverse=True)  # Ordenar según altura
+            nodos_no_expandidos.sort(key=lambda nodo: nodo.altura, reverse=True) 
             for nodo in nodos_no_expandidos:
                 pila_dfs.append(nodo)
-            nodos_no_expandidos = []  # Limpiamos la lista
+            nodos_no_expandidos = [] 
         else:
             nodo_inicial = NodoArbol(self.raton_pos)
             pila_dfs.append(nodo_inicial)
@@ -258,17 +258,17 @@ class Laberinto:
         expansiones = 0
 
         while pila_dfs:
-            nodo_actual = pila_dfs.pop()  # Sacar el último nodo añadido (estilo LIFO)
+            nodo_actual = pila_dfs.pop()  #Aquí saco el ultimo añadido a la pila
             posicion_actual = nodo_actual.posicion
             print(f"Expandiendo nodo DFS: {posicion_actual}")
             expansiones += 1
 
-            # Verificar si encontramos el queso
+
             if posicion_actual == self.queso_pos:
                 self.estrategia_label1.config(text="¡Queso encontrado con DFS!")
                 return True, expansiones
 
-            # Recolectar movimientos válidos
+
             movimientos_validos = []
             for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
@@ -278,7 +278,7 @@ class Laberinto:
                     nueva_posicion not in visitados):
                     movimientos_validos.append(nueva_posicion)
 
-            # Crear los nodos hijos (de izquierda a derecha)
+            #Añado sus hijos de izq a derecha
             nodos_hijos = []
             for nueva_posicion in movimientos_validos:
                 nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
@@ -286,59 +286,55 @@ class Laberinto:
                 nodos_hijos.append(nuevo_nodo)
                 visitados.add(nueva_posicion)
 
-                # Dibujar el nodo y actualizar la visualización
+
                 self.dibujar_nodo_lab(nueva_posicion)
                 self.dibujar_arbol(nodo_actual, nuevo_nodo)
                 self.root.update()
                 time.sleep(0.5)
 
-            # Agregar hijos en orden inverso para priorizar el hijo izquierdo
+            # Se tienen que invertir los nodos para que se respete el orden
             for nodo in reversed(nodos_hijos):
                 pila_dfs.append(nodo)
 
-            # Verificar el límite de expansiones
+
             if expansiones >= max_expansiones:
                 print(f"Límite de expansiones alcanzado en DFS ({expansiones})")
-                nodos_no_expandidos.extend(pila_dfs)  # Guardar los nodos restantes como no expandidos
+                nodos_no_expandidos.extend(pila_dfs)  
                 self.estrategia_label1.config(text="Límite de expansiones alcanzado")
                 return False, expansiones
 
-        # Si se agota la pila, guardar los nodos no expandidos
         nodos_no_expandidos.extend(pila_dfs)
         return False, expansiones
 
-    #No funciona
+
     def busqueda_bfs(self, max_expansiones):
         global nodos_no_expandidos
 
         cola_bfs = deque()
-        # Si existen nodos no expandidos, comenzamos con ellos
         if nodos_no_expandidos:
-            # Ordenamos los nodos no expandidos por su altura (o cualquier otro criterio adecuado)
             nodos_no_expandidos.sort(key=lambda nodo: nodo.altura)
-            # Añadimos esos nodos a la cola BFS
+
             for nodo in nodos_no_expandidos:
-                cola_bfs.append((nodo, 0))  # La profundidad inicial es 0
-            nodos_no_expandidos = []  # Limpiamos la lista de nodos no expandidos
+                cola_bfs.append((nodo, 0))  
+            nodos_no_expandidos = []  
         else:
-            # Si no hay nodos no expandidos, comenzamos con el nodo inicial
+
             nodo_inicial = NodoArbol(self.raton_pos)
             cola_bfs.append((nodo_inicial, 0))
 
         expansiones = 0
-        visitados = set([self.raton_pos])  # Para llevar un seguimiento de las posiciones visitadas
+        visitados = set([self.raton_pos]) 
 
         while cola_bfs:
             nodo_actual, profundidad = cola_bfs.popleft()
             posicion_actual = nodo_actual.posicion
             print(f"Expandiendo nodo BFS: {posicion_actual}")
 
-            # Verificar si encontramos el queso
             if posicion_actual == self.queso_pos:
                 print("¡Queso encontrado con BFS!")
                 return True, expansiones
 
-            # Recoger los movimientos válidos
+
             movimientos_validos = []
             for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
@@ -348,7 +344,7 @@ class Laberinto:
                     nueva_posicion not in visitados):
                     movimientos_validos.append(nueva_posicion)
 
-            # Crear nodos hijos
+
             nodos_hijos = []
             for nueva_posicion in movimientos_validos:
                 nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
@@ -356,24 +352,22 @@ class Laberinto:
                 nodos_hijos.append(nuevo_nodo)
                 visitados.add(nueva_posicion)
 
-                # Visualización
+
                 self.dibujar_nodo_lab(nueva_posicion)
                 self.dibujar_arbol(nodo_actual, nuevo_nodo)
                 self.root.update()
                 time.sleep(0.5)
 
-            # Contamos la expansión después de crear todos los hijos
+
             if nodos_hijos:
                 expansiones += 1
 
-            # Comprobamos si hemos alcanzado el límite de expansiones
+
             if expansiones >= max_expansiones:
                 print(f"Límite de expansiones alcanzado en BFS ({expansiones})")
                 nodos_no_expandidos.extend([nodo for nodo, _ in cola_bfs])
                 return False, expansiones
 
-
-            # Añadimos los nodos hijos a la cola de BFS
             cola_bfs.extend((nodo, profundidad + 1) for nodo in nodos_hijos)
             
             
@@ -385,20 +379,20 @@ class Laberinto:
 
         return False, expansiones
 
-    #No funciona
+
     def busqueda_dfs_limitada(self, profundidad_max):
-        global nodos_no_expandidos  # Usamos la variable global
+        global nodos_no_expandidos 
 
         try:
             limite_profu = int(input("Ingrese el límite de profundidad deseado: "))
         except ValueError:
             print("Por favor, ingrese un número entero válido.")
-            return self.busqueda_dfs_limitada(profundidad_max)  # Recursivamente vuelve a solicitar
+            return self.busqueda_dfs_limitada(profundidad_max)
 
-        pila_dfs = [(NodoArbol(self.raton_pos), 0)]  # La pila contendrá el nodo y la altura
+        pila_dfs = [(NodoArbol(self.raton_pos), 0)]  
         visitados = set([self.raton_pos])
-        expansiones_realizadas = 0  # Contador de expansiones
-        nodos_espera = []  # Lista de nodos que hemos dejado de expandir pero que deben expandirse después
+        expansiones_realizadas = 0  
+        nodos_espera = []  # Esta lista me va a guardar los nodos que dejó sin expandir
 
         while pila_dfs or nodos_espera:
             if not pila_dfs:  # Si no hay nodos para expandir, usamos los nodos en espera
@@ -406,77 +400,74 @@ class Laberinto:
                 nodos_espera = []
 
             if nodos_no_expandidos:  # Si hay nodos no expandidos, los ordenamos por altura
-                nodos_no_expandidos.sort(key=lambda nodo: nodo.altura)  # Ordenar según altura de menor a mayor
+                nodos_no_expandidos.sort(key=lambda nodo: nodo.altura)  # Ordeno según altura de menor a mayor
                 for nodo in nodos_no_expandidos:
                     pila_dfs.append((nodo, nodo.altura))
-                nodos_no_expandidos = []  # Limpiamos la lista de nodos no expandidos
+                nodos_no_expandidos = []  
 
             nodo_actual, altura = pila_dfs.pop()
             
             # Solo contar una expansión si realmente estamos expandiendo un nodo
-            if altura < limite_profu:  # Aseguramos que la expansión solo ocurra si no se excede la profundidad
+            if altura < limite_profu: 
                 expansiones_realizadas += 1
 
             posicion_actual = nodo_actual.posicion
 
-            # Si encuentra el queso, retorna éxito
+
             if posicion_actual == self.queso_pos:
                 print(f"¡Queso encontrado con DFS limitada a profundidad {profundidad_max}!")
-                self.mostrar_camino(nodo_actual)  # Mostrar el camino si es necesario
+                self.mostrar_camino(nodo_actual) 
                 return True
 
-            nodos_hijos = []  # Lista para almacenar los nodos hijos generados
+            nodos_hijos = [] 
 
-            # Para cada movimiento válido, crear un nuevo nodo y agregarlo a la pila
+
             for movimiento in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
                 nueva_posicion = (posicion_actual[0] + movimiento[0], posicion_actual[1] + movimiento[1])
 
-                # Verificar si la nueva posición es válida
+
                 if (0 <= nueva_posicion[0] < self.rows and
                     0 <= nueva_posicion[1] < self.cols and
                     self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0
                     and nueva_posicion not in visitados):
 
-                    # Crear un nuevo nodo y añadirlo a la lista de hijos
-                    nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual, altura=altura + 1)  # Usamos la altura
+
+                    nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual, altura=altura + 1)  
                     nodo_actual.agregar_hijo(nuevo_nodo)
                     nodos_hijos.append(nuevo_nodo)
                     visitados.add(nueva_posicion)
 
-                    # Dibujar el nodo en el laberinto y el árbol
+
                     self.dibujar_nodo_lab(nueva_posicion)
                     self.dibujar_arbol(nodo_actual, nuevo_nodo)
                     self.root.update()
                     time.sleep(0.5)
 
-            # Si alcanzamos el límite de profundidad, guardamos los nodos hijos para explorar más tarde
             if altura >= limite_profu:
                 print(f"Límite de altura alcanzado en la rama de {nodo_actual.posicion}")
-                # No expandimos más en esta rama, pero guardamos los hijos para expandir más tarde
+
                 for nodo in nodos_hijos:
-                    nodos_espera.append(nodo)  # Guardamos sin aumentar la altura
+                    nodos_espera.append(nodo)  
 
             else:
-                # Agregar los hijos a la pila con la nueva altura, si no hemos alcanzado el límite
+
                 for nodo in reversed(nodos_hijos):
                     pila_dfs.append((nodo, altura + 1))
 
-            # Verificar si se alcanzó el límite de expansiones
+
             if expansiones_realizadas >= profundidad_max:
                 print(f"Límite de expansiones alcanzado: {profundidad_max}")
-                nodos_no_expandidos.extend(pila_dfs)  # Almacenar nodos no expandidos en la variable global
+                nodos_no_expandidos.extend(pila_dfs)  
                 return False
 
-        # Si la búsqueda DFS limitada no encuentra el queso, retornar False
         print(f"No se encontró el queso con DFS limitada a profundidad {profundidad_max}.")
-        nodos_no_expandidos.extend(pila_dfs)  # Guardar los nodos no expandidos al final
+        nodos_no_expandidos.extend(pila_dfs)  
         return False
 
 
     def busqueda_costo_uniforme(self, max_expansiones):
             global nodos_no_expandidos
-
-            # Usamos una cola de prioridad (heap) para mantener los nodos ordenados por costo
+            # Aquí tocó usar una cola de prioridad para ordenar por costos
             # El formato es (costo_acumulado, contador, nodo)
             # El contador es para desempatar cuando hay costos iguales
             cola_prioridad = []
@@ -484,16 +475,16 @@ class Laberinto:
             visitados = set()
             costos = {}
 
-            # Si hay nodos no expandidos, agrégalos a la cola
+
             if nodos_no_expandidos:
                 for nodo in nodos_no_expandidos:
                     heapq.heappush(cola_prioridad, (nodo.costos, contador, nodo))
                     contador += 1
                     costos[nodo.posicion] = nodo.costos
                 print(f"Continuando desde nodos no expandidos: {len(nodos_no_expandidos)} nodos")
-                nodos_no_expandidos = []  # Reiniciamos la lista de nodos no expandidos
+                nodos_no_expandidos = []  
             else:
-                # Crear y agregar el nodo inicial si no hay nodos previos
+
                 nodo_inicial = NodoArbol(self.raton_pos)
                 heapq.heappush(cola_prioridad, (0, contador, nodo_inicial))
                 contador += 1
@@ -502,52 +493,46 @@ class Laberinto:
             expansiones = 0
 
             while expansiones < max_expansiones:
-                # Obtener el nodo con menor costo
                 costo_actual, _, nodo_actual = heapq.heappop(cola_prioridad)
                 posicion_actual = nodo_actual.posicion
 
-                # Si ya visitamos esta posición, continuamos
+
                 if posicion_actual in visitados:
                     continue
 
-                # Marcar como visitado
                 visitados.add(posicion_actual)
                 expansiones += 1
                 print(f"Expandiendo nodo: {posicion_actual} con costo {costo_actual}")
 
-                # Verificar si encontramos el queso
+
                 if posicion_actual == self.queso_pos:
                     print(f"¡Queso encontrado con búsqueda de costo uniforme!")
                     print(f"Costo total del camino: {costo_actual}")
                     return True, expansiones
 
-                # Expandir el nodo actual
-                for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:  # Izquierda, Arriba, Derecha, Abajo
+
+                for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:  
                     nueva_posicion = (
                         posicion_actual[0] + movimiento[0],
                         posicion_actual[1] + movimiento[1]
                     )
 
-                    # Verificar si el movimiento es válido
                     if (0 <= nueva_posicion[0] < self.rows and 
                         0 <= nueva_posicion[1] < self.cols and 
                         self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0):
 
-                        # Calcular el nuevo costo
-                        nuevo_costo = costo_actual + 1  # Cada movimiento tiene costo 1
+                        nuevo_costo = costo_actual + 1
                         
                         
-                        # Si encontramos un camino mejor a esta posición
+
                         if nueva_posicion not in costos or nuevo_costo < costos[nueva_posicion]:
                             costos[nueva_posicion] = nuevo_costo
                             contador += 1
                             
-                            # Crear nuevo nodo
                             nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual, costo=nuevo_costo)
-                            nuevo_nodo.altura = nodo_actual.altura + 1  # Cada movimiento tiene costo 1
+                            nuevo_nodo.altura = nodo_actual.altura + 1  
                             nodo_actual.agregar_hijo(nuevo_nodo)
                             
-                            # Agregar a la cola de prioridad
                             heapq.heappush(cola_prioridad, (nuevo_costo, contador, nuevo_nodo))
                             
                             # Visualización
@@ -556,7 +541,6 @@ class Laberinto:
                             self.root.update()
                             time.sleep(0.5)
 
-            # Si terminamos sin encontrar el queso
             if cola_prioridad:
                 nodos_no_expandidos.extend([nodo for _, _, nodo in cola_prioridad])
                 print(f"Agregando {len(cola_prioridad)} nodos a la lista de no expandidos.")
@@ -566,29 +550,26 @@ class Laberinto:
             print("No se encontró el queso")
             return False, expansiones
 
-    #Heuristica
+
     def heuristica_manhattan(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
-    #Funciona solita
+
     def busqueda_avara(self, max_expansiones):
         global nodos_no_expandidos
-        # Usamos una cola de prioridad (heap) para mantener los nodos ordenados por heurística
-        # El formato es (heuristica, contador, nodo)
+        #Para la avara se hizo lo mismo, una cola de prioridad para ordenarlos en base a su manhattan
         cola_prioridad = []
         contador = 0
         visitados = set()
         
-        # Si hay nodos no expandidos, agrégalos a la cola
         if nodos_no_expandidos:
             for nodo in nodos_no_expandidos:
                 heuristica = self.heuristica_manhattan(nodo.posicion, self.queso_pos)
                 heapq.heappush(cola_prioridad, (heuristica, contador, nodo))
                 contador += 1
             print(f"Continuando desde nodos no expandidos: {len(nodos_no_expandidos)} nodos")
-            nodos_no_expandidos = []  # Reiniciar la lista global de nodos no expandidos
+            nodos_no_expandidos = [] 
         else:
-            # Crear y agregar el nodo inicial si no hay nodos previos
             nodo_inicial = NodoArbol(self.raton_pos)
             heuristica_inicial = self.heuristica_manhattan(self.raton_pos, self.queso_pos)
             heapq.heappush(cola_prioridad, (heuristica_inicial, contador, nodo_inicial))
@@ -597,58 +578,49 @@ class Laberinto:
         expansiones = 0
 
         while cola_prioridad and expansiones < max_expansiones:
-            # Obtener el nodo con menor heurística
             heuristica_actual, _, nodo_actual = heapq.heappop(cola_prioridad)
             posicion_actual = nodo_actual.posicion
 
-            # Si ya visitamos esta posición, continuamos
             if posicion_actual in visitados:
                 continue
 
-            # Marcar como visitado
             visitados.add(posicion_actual)
             expansiones += 1
             print(f"Expandiendo nodo: {posicion_actual} con heurística {heuristica_actual}")
 
-            # Verificar si encontramos el queso
+
             if posicion_actual == self.queso_pos:
                 print(f"¡Queso encontrado con búsqueda Avara!")
                 print(f"Total de expansiones realizadas: {expansiones}")
                 return True, expansiones
 
-            # Expandir el nodo actual
             for movimiento in [(0, -1), (-1, 0), (0, 1), (1, 0)]:  # Izquierda, Arriba, Derecha, Abajo
                 nueva_posicion = (
                     posicion_actual[0] + movimiento[0],
                     posicion_actual[1] + movimiento[1]
                 )
 
-                # Verificar si el movimiento es válido
                 if (0 <= nueva_posicion[0] < self.rows and 
                     0 <= nueva_posicion[1] < self.cols and 
                     self.maze[nueva_posicion[0]][nueva_posicion[1]] == 0 and
                     nueva_posicion not in visitados):
 
-                    # Calcular la heurística (distancia de Manhattan)
                     nueva_heuristica = self.heuristica_manhattan(nueva_posicion, self.queso_pos)
                     contador += 1
                     
-                    # Crear nuevo nodo
                     nuevo_nodo = NodoArbol(nueva_posicion, nodo_actual)
-                    nuevo_nodo.costos = nodo_actual.costos + 1  # Costo de movimiento
-                    nuevo_nodo.altura = nodo_actual.altura + 1  # Altura del nodo
+                    nuevo_nodo.costos = nodo_actual.costos + 1 
+                    nuevo_nodo.altura = nodo_actual.altura + 1
                     nodo_actual.agregar_hijo(nuevo_nodo)
-                    
-                    # Agregar a la cola de prioridad
+
                     heapq.heappush(cola_prioridad, (nueva_heuristica, contador, nuevo_nodo))
                     
-                    # Visualización
                     self.dibujar_nodo_lab(nueva_posicion)
                     self.dibujar_arbol(nodo_actual, nuevo_nodo)
                     self.root.update()
                     time.sleep(0.5)
 
-        # Si terminamos sin encontrar el queso
+
         if cola_prioridad:
             nodos_no_expandidos.extend([nodo for _, _, nodo in cola_prioridad])
             print(f"Agregando {len(cola_prioridad)} nodos a la lista de no expandidos.")
@@ -668,60 +640,51 @@ class Laberinto:
         self.canvas.create_rectangle(x1, y1, x2, y2, fill="lightblue", outline="black")
 
     def dibujar_arbol(self, nodo_padre, nodo_hijo):
-        # Obtener el tamaño del canvas para centrar la raíz
         canvas_ancho = self.canvas_arbol.winfo_width()
 
-        # Inicializar el contador de hijos para el nodo padre si no existe
         if nodo_padre not in self.hijos_contador:
-            self.hijos_contador[nodo_padre] = 0  # Contador de hijos para el nodo padre
+            self.hijos_contador[nodo_padre] = 0  
 
-        # Si el nodo hijo ya ha sido agregado, no hacer nada (evitar duplicados)
+
         if nodo_hijo in self.nodo_padre_coords:
             print(f"El nodo {nodo_hijo} ya existe. Evitando duplicado.")
             return
 
-        # Si es la raíz, centrarla en el canvas
         if nodo_padre not in self.nodo_padre_coords:
-            x_centro = canvas_ancho // 2  # Centrar la raíz
-            self.nodo_padre_coords[nodo_padre] = (x_centro, 20)  # Coordenadas iniciales centradas
-            self.canvas_arbol.create_oval(x_centro - 5, 15, x_centro + 5, 25, fill="blue")  # Dibujar la raíz
+            x_centro = canvas_ancho // 2  
+            self.nodo_padre_coords[nodo_padre] = (x_centro, 20)  
+            self.canvas_arbol.create_oval(x_centro - 5, 15, x_centro + 5, 25, fill="blue")  
 
         # Obtener coordenadas del nodo padre
         x_padre, y_padre = self.nodo_padre_coords[nodo_padre]
 
-        # Verificar si el nodo padre es la raíz (no tiene padre)
         es_raiz = nodo_padre.padre is None
 
-        # Calcular la posición de los nuevos hijos
         if es_raiz:
-            # Para la raíz, distribuimos los hijos uniformemente en el eje X
             num_hijos = len(nodo_padre.hijos)
-            espacio = 300 # Espacio entre los nodos (puedes ajustarlo según el tamaño deseado)
-            x_inicio = x_padre - (num_hijos - 1) * espacio // 2  # Ajustar para centrar los hijos
+            espacio = 300 
+            x_inicio = x_padre - (num_hijos - 1) * espacio // 2 
         else:
-            # Para nodos no raíz, también distribuimos los hijos uniformemente
             num_hijos = len(nodo_padre.hijos)
-            espacio = 100 # Espacio entre los nodos hijos
-            x_inicio = x_padre - (num_hijos - 1) * espacio // 2  # Ajustar para centrar los hijos
+            espacio = 100 
+            x_inicio = x_padre - (num_hijos - 1) * espacio // 2  
     
-        # Determinar la posición del hijo en el eje X
+ 
         x_hijo = x_inicio + self.hijos_contador[nodo_padre] * espacio
-        y_hijo = y_padre + 80  # Aumento en altura para el hijo
+        y_hijo = y_padre + 80 
 
-        # Dibujar la línea entre el nodo padre y el hijo
+
         self.canvas_arbol.create_line(x_padre, y_padre, x_hijo, y_hijo, fill="black")
 
-        # Dibujar el nodo hijo
+   
         self.canvas_arbol.create_oval(x_hijo - 5, y_hijo - 5, x_hijo + 5, y_hijo + 5, fill="blue")
 
-        # Mostrar las coordenadas de la cuadrícula del nodo hijo encima de él
-        grid_x, grid_y = nodo_hijo.posicion  # Obtener las coordenadas de la cuadrícula
+
+        grid_x, grid_y = nodo_hijo.posicion  
         self.canvas_arbol.create_text(x_hijo, y_hijo - 20, text=f"({grid_x}, {grid_y})", fill="black")
 
-        # Almacenar las coordenadas del nuevo nodo hijo
         self.nodo_padre_coords[nodo_hijo] = (x_hijo, y_hijo)
 
-        # Incrementar el contador de hijos para el nodo padre
         self.hijos_contador[nodo_padre] += 1
         
     def mostrar_camino(self, nodo):
