@@ -3,5 +3,7 @@ Primer proyecto de IA
 
 integrantes: 
 Carlos Stiven Ruiz Rojas - 2259629
-Jhony Fernando Duque Villada 
-Jairo Gomez Cardona
+Jhony Fernando Duque Villada - 2259398
+Jairo Gomez Cardona - 2259332
+Juan David Rojas Narvaez - 2259673
+Juan Camilo Diaz Valencia - 2259583
